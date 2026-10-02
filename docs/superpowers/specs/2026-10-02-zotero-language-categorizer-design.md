@@ -236,13 +236,20 @@ hand-designed.)
   flat/modern styled (no native OS button chrome — custom flat background,
   border-radius, a filled primary color for Apply, a neutral gray for
   Cancel).
-- Table columns: Title (flex, truncated), Item Type (fixed), **Change**
-  (fixed — `old value → new value`, using a real arrow character; `—` when
-  there was no previous value, `…` while classification hasn't filled in a
-  prediction yet, and a `(?)` suffix on the new value when `!reliable`),
-  Status (fixed-width, custom `renderer` that paints nothing → a green check
-  or red X once that row's write resolves or fails during Apply). The status
-  column is the progress indicator; there's no separate progress bar.
+- Table columns: Creators (fixed — first creator's last name, plus
+  `et al.` when there's more than one; empty when the item has no creators),
+  Title (flex, truncated), **Change** (fixed — `old value → new value`,
+  using a real arrow character; `—` when there was no previous value, `…`
+  while classification hasn't filled in a prediction yet, and a `(?)` suffix
+  on the new value when `!reliable`), Status (fixed-width, custom `renderer`
+  that paints nothing → a green check or red X once that row's write
+  resolves or fails during Apply). The status column is the progress
+  indicator; there's no separate progress bar. No Item Type column — not
+  useful enough to earn the space.
+- Classification is defensive per-row: if a classifier throws for one item
+  (rather than returning `null`), that row's prediction is just left blank
+  instead of leaving the whole batch — and the Apply button — stuck, since
+  Apply is only re-enabled once the classification pass finishes.
 - Buttons: **Cancel** (always enabled, closes the dialog) and **Apply**
   (disabled until classification finishes, then writes). There is no
   separate Preview step or button — opening the dialog classifies

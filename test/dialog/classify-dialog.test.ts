@@ -2,16 +2,22 @@ import { expect } from "chai";
 import {
   buildRows,
   previewRows,
+  formatCreators,
 } from "../../src/modules/dialog/classify-dialog";
 import type { LanguageClassifier } from "../../src/modules/classifiers/types";
 
-function makeItem(title: string, abstractNote = "", language = "") {
+function makeItem(
+  title: string,
+  abstractNote = "",
+  language = "",
+  creators: { lastName: string }[] = [],
+) {
   const fields: Record<string, string> = { title, abstractNote, language };
   return {
     isRegularItem: () => true,
     library: { editable: true },
     getField: (f: string) => fields[f] ?? "",
-    itemType: "journalArticle",
+    getCreators: () => creators,
   };
 }
 
@@ -38,6 +44,29 @@ describe("buildRows", () => {
     const rows = buildRows([makeItem("Titel", "", "German")]);
     expect(rows[0].currentLanguage).to.equal("German");
   });
+
+  it("formats the row's creators summary from the item's creators", () => {
+    const rows = buildRows([
+      makeItem("Title", "", "", [{ lastName: "Smith" }, { lastName: "Jones" }]),
+    ]);
+    expect(rows[0].creators).to.equal("Smith et al.");
+  });
+});
+
+describe("formatCreators", () => {
+  it("returns an empty string for no creators", () => {
+    expect(formatCreators([])).to.equal("");
+  });
+
+  it("returns the last name alone for a single creator", () => {
+    expect(formatCreators([{ lastName: "Smith" }])).to.equal("Smith");
+  });
+
+  it("appends 'et al.' when there is more than one creator", () => {
+    expect(
+      formatCreators([{ lastName: "Smith" }, { lastName: "Jones" }]),
+    ).to.equal("Smith et al.");
+  });
 });
 
 describe("previewRows", () => {
@@ -55,6 +84,18 @@ describe("previewRows", () => {
   it("leaves code null when the classifier returns null", () => {
     const rows = buildRows([makeItem("")]);
     previewRows(rows, fakeClassifier);
+    expect(rows[0].code).to.be.null;
+  });
+
+  it("leaves code null and doesn't throw when the classifier throws", () => {
+    const throwingClassifier: LanguageClassifier = {
+      id: "throwing",
+      classify() {
+        throw new Error("boom");
+      },
+    };
+    const rows = buildRows([makeItem("Hello World")]);
+    expect(() => previewRows(rows, throwingClassifier)).to.not.throw();
     expect(rows[0].code).to.be.null;
   });
 });

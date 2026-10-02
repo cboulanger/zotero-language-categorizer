@@ -6,20 +6,28 @@ import type { ScannableItem } from "../scan";
 export interface RowState {
   item: ScannableItem;
   title: string;
-  itemType: string;
+  creators: string;
   currentLanguage: string;
   code: string | null;
   reliable: boolean | null;
   status: "pending" | "success" | "error";
 }
 
+type CreatorLike = { lastName: string };
+
+export function formatCreators(creators: CreatorLike[]): string {
+  if (creators.length === 0) return "";
+  const first = creators[0].lastName;
+  return creators.length > 1 ? `${first} et al.` : first;
+}
+
 export function buildRows(
-  items: (ScannableItem & { itemType: string })[],
+  items: (ScannableItem & { getCreators(): CreatorLike[] })[],
 ): RowState[] {
   return items.map((item) => ({
     item,
     title: item.getField("title") || "(no title)",
-    itemType: item.itemType,
+    creators: formatCreators(item.getCreators()),
     currentLanguage: item.getField("language") || "",
     code: null,
     reliable: null,
@@ -32,12 +40,17 @@ export function previewRows(
   classifier: LanguageClassifier,
 ): void {
   for (const row of rows) {
-    const title = row.item.getField("title") || "";
-    const abstractNote = row.item.getField("abstractNote") || "";
-    const text = [title, abstractNote].filter(Boolean).join("\n");
-    const result = classifier.classify(text);
-    row.code = result?.code ?? null;
-    row.reliable = result?.reliable ?? null;
+    try {
+      const title = row.item.getField("title") || "";
+      const abstractNote = row.item.getField("abstractNote") || "";
+      const text = [title, abstractNote].filter(Boolean).join("\n");
+      const result = classifier.classify(text);
+      row.code = result?.code ?? null;
+      row.reliable = result?.reliable ?? null;
+    } catch (e) {
+      row.code = null;
+      row.reliable = null;
+    }
   }
 }
 
@@ -52,7 +65,7 @@ export function chunk<T>(items: T[], size: number): T[][] {
 }
 
 type ApplyableItem = ScannableItem & {
-  itemType: string;
+  getCreators(): CreatorLike[];
   setField(field: string, value: string): void;
   saveTx(): Promise<unknown>;
 };
@@ -108,8 +121,8 @@ export class DialogController {
       .setProp("getRowCount", () => this.rows.length)
       .setProp("getRowData", (i: number) => this.rowData(i))
       .setProp("columns", [
+        { dataKey: "creators", label: "Creators", fixedWidth: true, width: 130 },
         { dataKey: "title", label: "Title", flex: 3 },
-        { dataKey: "itemType", label: "Type", fixedWidth: true, width: 110 },
         { dataKey: "change", label: "Change", fixedWidth: true, width: 140 },
         { dataKey: "status", label: "", fixedWidth: true, width: 32 },
       ])
@@ -135,7 +148,7 @@ export class DialogController {
       : "…";
     return {
       title: row.title,
-      itemType: row.itemType,
+      creators: row.creators,
       change: `${oldValue} → ${newValue}`,
       status:
         row.status === "success" ? "✓" : row.status === "error" ? "✗" : "",
@@ -143,13 +156,16 @@ export class DialogController {
   }
 
   async classify(actionButton: HTMLButtonElement): Promise<void> {
-    const classifier = getClassifier();
-    for (const group of chunk(this.rows, CHUNK_SIZE)) {
-      previewRows(group, classifier);
-      this.table?.treeInstance.invalidate();
-      await new Promise((r) => this.win.setTimeout(r, 0));
+    try {
+      const classifier = getClassifier();
+      for (const group of chunk(this.rows, CHUNK_SIZE)) {
+        previewRows(group, classifier);
+        this.table?.treeInstance.invalidate();
+        await new Promise((r) => this.win.setTimeout(r, 0));
+      }
+    } finally {
+      actionButton.disabled = false;
     }
-    actionButton.disabled = false;
   }
 
   async onApplyClick(button: HTMLButtonElement): Promise<void> {
