@@ -1,7 +1,7 @@
 {
   "name": "zotero-language-categorizer",
   "type": "module",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Classifies the language of item titles/abstracts and fills in the language field",
   "config": {
     "addonName": "Zotero Language Categorizer",
