@@ -185,11 +185,15 @@ export class DialogController {
       .setProp("multiSelect", false)
       .setProp("onSelectionChange", () => {})
       .setContainerId("zotero-lang-cat-table-container");
-    this.table.render();
 
     // Opening the dialog performs the classification immediately (it's fast
     // enough not to need a separate "Preview" step); Apply only writes.
-    void this.classify(actionButton);
+    // render()'s mount is async — treeInstance isn't set until its
+    // onfulfilled callback fires, so classify() (which invalidates the
+    // tree) must not start until then.
+    this.table.render(undefined, () => {
+      void this.classify(actionButton);
+    });
   }
 
   rowData(i: number): Record<string, string> {
