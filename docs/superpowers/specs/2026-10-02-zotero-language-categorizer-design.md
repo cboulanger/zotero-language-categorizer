@@ -294,6 +294,18 @@ and caches its own `Localization` instance per execution scope instead of
 reading `addon.data.locale`, so it works identically whether called from the
 main process or from inside a dialog's own copy of the module.
 
+Translations: `addon/locale/<locale>/addon.ftl`, one directory per locale,
+same message IDs as `en-US`. Currently `de`, `fr`, and `es` alongside the
+`en-US` source — base language codes (not region-qualified like `de-DE`),
+matching common practice in other Zotero plugins and relying on Fluent's
+locale negotiation to match regional variants (`de-AT`, `fr-CA`, …) to the
+base. Adding a language is just adding its directory; nothing else to wire
+up, since `getString()` and `Zotero.MenuManager`'s `l10nID` both resolve
+against whatever locale Zotero negotiates at runtime.
+
+main process or from inside a dialog's own copy of the module.
+main process or from inside a dialog's own copy of the module.
+
 ## Data flow
 
 1. User clicks the Tools-menu entry.
