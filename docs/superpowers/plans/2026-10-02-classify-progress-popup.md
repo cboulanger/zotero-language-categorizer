@@ -21,6 +21,7 @@
 ### Task 1: Add Fluent locale keys (all four locales) + typings
 
 **Files:**
+
 - Modify: `addon/locale/en-US/addon.ftl`
 - Modify: `addon/locale/de/addon.ftl`
 - Modify: `addon/locale/fr/addon.ftl`
@@ -28,6 +29,7 @@
 - Modify: `typings/i10n.d.ts`
 
 **Interfaces:**
+
 - Produces: two Fluent message IDs consumable via `getString()` (`src/utils/locale.ts`):
   - `getString("progress-classify-headline")` → `string`
   - `getString("progress-items-processed", { args: { current: number, total: number } })` → `string`
@@ -112,9 +114,11 @@ git commit -m "feat(i18n): add classify-progress popup locale strings"
 ### Task 2: Show and update the progress popup in `classify()`
 
 **Files:**
+
 - Modify: `src/modules/dialog/classify-dialog.ts:213-224` (the `classify()` method)
 
 **Interfaces:**
+
 - Consumes: `getString` from `../../utils/locale` (already imported in this file); `CHUNK_SIZE`, `chunk`, `previewRows` (already defined/imported in this file); the two Fluent IDs from Task 1.
 - Produces: no new exports — this is a behavior-only change inside an existing method.
 
@@ -146,7 +150,10 @@ import { VirtualizedTableHelper } from "zotero-plugin-toolkit";
 to:
 
 ```ts
-import { ProgressWindowHelper, VirtualizedTableHelper } from "zotero-plugin-toolkit";
+import {
+  ProgressWindowHelper,
+  VirtualizedTableHelper,
+} from "zotero-plugin-toolkit";
 ```
 
 - [x] **Step 2: Rewrite `classify()` to create, update, and close the popup**

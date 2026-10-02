@@ -41,12 +41,12 @@ In `classify()`:
   must stay open and updating throughout.
 - After each chunk inside the existing `chunk(this.rows, CHUNK_SIZE)` loop
   (already yields every 50 rows via `await new Promise(r => setTimeout(r,
-  0))` for UI responsiveness — reusing that existing cadence for progress
+0))` for UI responsiveness — reusing that existing cadence for progress
   updates, no restructuring of the loop): call `.changeLine({ text, progress
-  })` with the running total processed and `Math.round((processed / total) *
-  100)`.
+})` with the running total processed and `Math.round((processed / total) *
+100)`.
 - In the existing `finally` block (alongside `actionButton.disabled =
-  false`): call `.startCloseTimer(2000)` so the popup auto-dismisses 2
+false`): call `.startCloseTimer(2000)` so the popup auto-dismisses 2
   seconds after classification finishes, rather than lingering indefinitely
   (since `-1` disabled the default auto-close).
 
