@@ -54,6 +54,70 @@ Classification input: `title + "\n" + abstractNote` (whichever are present)
 passed to `eld.detect()`. The returned `{ language, isReliable() }` becomes
 `{ code, reliable }` in our wrapper.
 
+### Classifier adapter architecture
+
+`eld` is wired in behind a small adapter interface, not called directly from
+`scan.ts`/the dialog, so a different classifier can be swapped in later
+without touching anything else. v1 ships only the `eld` adapter and no
+config/UI for choosing between adapters — but the factory already takes a
+classifier id, so adding a second adapter plus a pref-backed selector later
+is a matter of registering it, not restructuring.
+
+```ts
+// src/classifiers/types.ts
+export interface ClassificationResult {
+  code: string;      // ISO 639-1 language code
+  reliable: boolean;
+}
+
+export interface LanguageClassifier {
+  id: string;                              // stable id, e.g. "eld"
+  classify(text: string): ClassificationResult | null;  // null = no usable prediction
+}
+```
+
+```ts
+// src/classifiers/eld-classifier.ts
+import { eld } from "eld";
+import type { LanguageClassifier } from "./types";
+
+export const eldClassifier: LanguageClassifier = {
+  id: "eld",
+  classify(text) {
+    const trimmed = text.trim();
+    if (!trimmed) return null;
+    const result = eld.detect(trimmed);
+    if (!result.language) return null;
+    return { code: result.language, reliable: result.isReliable() };
+  },
+};
+```
+
+```ts
+// src/classifiers/index.ts
+import type { LanguageClassifier } from "./types";
+import { eldClassifier } from "./eld-classifier";
+
+const registry: Record<string, LanguageClassifier> = {
+  [eldClassifier.id]: eldClassifier,
+};
+
+const DEFAULT_CLASSIFIER_ID = "eld";
+
+// `id` is unused today (always the default) but is already the extension
+// point: a future pref pane would read `Zotero.Prefs.get('zotero-lang-cat.classifierId')`
+// and pass it here, with no changes needed in scan.ts or the dialog.
+export function getClassifier(id: string = DEFAULT_CLASSIFIER_ID): LanguageClassifier {
+  const classifier = registry[id];
+  if (!classifier) throw new Error(`Unknown classifier: ${id}`);
+  return classifier;
+}
+```
+
+`scan.ts` and the dialog controller only ever import `getClassifier` from
+`src/classifiers/index.ts` and call `.classify(text)` — they never import
+`eld` or any adapter directly.
+
 ## Zotero plugin architecture & scaffolding
 
 ### Scaffold choice
@@ -80,9 +144,11 @@ plain-JS plugin would have to hand-roll.
   domain — adjust to the actual publishing location before release).
 - Namespace prefix (element IDs, Fluent IDs, pref keys, CSS classes):
   `zotero-lang-cat`.
-- Pref branch: `extensions.zotero-lang-cat.*` (currently unused — this plugin
-  has no persisted settings in v1, since the only configurable aspect, scope,
-  is derived from the current pane selection rather than stored).
+- Pref branch: `extensions.zotero-lang-cat.*` (currently unused in v1 — no
+  pref pane is built yet. Reserved for a future `classifierId` pref that
+  would be read by `getClassifier()`, and the only other configurable
+  aspect, scope, is derived from the current pane selection rather than
+  stored).
 
 ### Directory layout
 
@@ -91,7 +157,10 @@ zotero-language-categorizer/
 ├── manifest.json
 ├── bootstrap.ts                     # lifecycle hooks (startup/shutdown/window load+unload)
 ├── src/
-│   ├── classifier.ts                # wraps `eld`; classify(title, abstract) -> {code, reliable} | null
+│   ├── classifiers/
+│   │   ├── types.ts                 # LanguageClassifier interface, ClassificationResult type
+│   │   ├── eld-classifier.ts        # adapter wrapping `eld`
+│   │   └── index.ts                 # registry + getClassifier(id?) factory (default: "eld")
 │   ├── scan.ts                      # reads active pane's current item list, applies eligibility filter
 │   └── dialog/
 │       ├── classify.xhtml           # dialog document (VirtualizedTableHelper host)
@@ -158,7 +227,7 @@ hand-designed.)
    columns start blank. If there are zero eligible items, Preview is disabled
    and an empty-state message is shown instead of the table.
 4. **Preview**: classify each row's `title + abstractNote` via
-   `classifier.ts`, fill in Detected Language and the confidence marker,
+   `getClassifier().classify(...)`, fill in Detected Language and the confidence marker,
    `invalidateRow` as each completes. On completion, the button switches to
    **Apply**.
 5. **Apply**: for each row with a prediction, `item.setField('language', code)`
@@ -182,9 +251,13 @@ hand-designed.)
 
 ## Testing
 
-- Unit tests for `classifier.ts` as a pure function: sample strings across
-  several languages, short-title-only inputs (to exercise the low-confidence
-  path), empty/whitespace-only input (must return `null`, not throw).
+- Unit tests for the `eld` adapter (`eld-classifier.ts`) as a pure function:
+  sample strings across several languages, short-title-only inputs (to
+  exercise the low-confidence path), empty/whitespace-only input (must return
+  `null`, not throw).
+- A trivial fake `LanguageClassifier` (fixed/canned results) is used in
+  dialog-level tests so Preview/Apply flow can be tested without depending on
+  real classification output.
 - Manual verification checklist in a dedicated dev Zotero profile:
   - Library with items in several languages, some with `language` already
     set (must remain untouched after Apply).
@@ -199,5 +272,8 @@ hand-designed.)
 
 - Per-row include/exclude checkboxes before Apply.
 - A separate scope picker inside the dialog (library/collection dropdown).
-- Persisted preferences/pref pane (nothing to configure yet).
+- Persisted preferences/pref pane, including any UI for choosing between
+  classifiers — the adapter/factory architecture supports adding this later
+  without restructuring, but no pref pane or classifier-selection UI ships
+  in v1.
 - Re-classifying items that already have a `language` value.
