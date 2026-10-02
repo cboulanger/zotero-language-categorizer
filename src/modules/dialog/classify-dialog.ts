@@ -71,7 +71,19 @@ type ApplyableItem = ScannableItem & {
   saveTx(): Promise<unknown>;
 };
 
+export const DIALOG_WINDOW_TYPE = "zotero-lang-cat:dialog";
+
+// Idempotent: focuses the existing dialog instead of opening a second one
+// if the user triggers the menu entry again while it's already open.
 export function openClassifyDialog(items: ApplyableItem[]): void {
+  const existing = Services.wm.getMostRecentWindow(
+    DIALOG_WINDOW_TYPE,
+  ) as (Window & { focus(): void }) | null;
+  if (existing) {
+    existing.focus();
+    return;
+  }
+
   const rows = buildRows(items);
   const win = Zotero.getMainWindow();
   win.openDialog(

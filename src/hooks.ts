@@ -1,7 +1,10 @@
 import { initLocale } from "./utils/locale";
 import { createZToolkit } from "./utils/ztoolkit";
 import { getScopedEligibleItems } from "./modules/scan";
-import { openClassifyDialog } from "./modules/dialog/classify-dialog";
+import {
+  openClassifyDialog,
+  DIALOG_WINDOW_TYPE,
+} from "./modules/dialog/classify-dialog";
 
 async function onStartup() {
   await Promise.all([
@@ -48,7 +51,7 @@ async function onMainWindowUnload(win: Window): Promise<void> {
 
 function onShutdown(): void {
   ztoolkit.unregisterAll();
-  for (const win of Services.wm.getEnumerator("zotero-lang-cat:dialog")) {
+  for (const win of Services.wm.getEnumerator(DIALOG_WINDOW_TYPE)) {
     (win as Window).close();
   }
   // Remove addon object

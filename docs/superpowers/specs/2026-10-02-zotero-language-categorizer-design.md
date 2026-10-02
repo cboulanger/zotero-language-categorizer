@@ -223,6 +223,11 @@ hand-designed.)
 
 - XHTML document with `windowtype="zotero-lang-cat:dialog"`, opened via
   `window.openDialog("chrome://zotero-lang-cat/content/dialog/classify.xhtml", ...)`.
+- `openClassifyDialog()` is idempotent: it first checks
+  `Services.wm.getMostRecentWindow("zotero-lang-cat:dialog")` and, if a
+  dialog is already open, just focuses it instead of opening a second one —
+  triggering the Tools-menu entry again while the dialog is up re-focuses
+  rather than stacking windows.
 - Includes the two extra stylesheets `VirtualizedTableHelper` requires
   (`zotero-react-client.css`, `zotero.css`) and the flex/min-height container
   CSS the toolkit docs specify. The root container is anchored with
