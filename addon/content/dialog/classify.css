@@ -39,6 +39,9 @@ body {
   line-height: 1.4;
   color: #666;
 }
+#zotero-lang-cat-skip-hint {
+  margin-top: 4px;
+}
 .zotero-lang-cat-link {
   display: inline-block;
   margin-top: 4px;
@@ -124,4 +127,25 @@ body {
 .zotero-lang-cat-status-error::before {
   content: "✗";
   color: #c62828;
+}
+/*
+ * Zotero's own stylesheet gives any row with a `highlighted` class a colored
+ * background via `.virtualized-table .row.highlighted:not(.selected) {
+ * background: var(--highlight-color, var(--accent-highlight)) !important }`
+ * (used elsewhere in Zotero for search-match highlighting). We reuse that
+ * same `highlighted` hook (toggled by makeRowRenderer from
+ * rowData().highlighted) to mark excluded rows instead, but that rule's
+ * !important can't be beaten by re-declaring `background` here, no matter
+ * the selector's specificity. Neutralizing the custom properties it reads
+ * on an ancestor works instead: `var()` resolves against whatever value is
+ * inherited at that element, which ordinary (non-!important) cascade rules
+ * can still redefine closer to the table than Zotero's own root-level
+ * definition.
+ */
+#zotero-lang-cat-table-container {
+  --highlight-color: transparent;
+  --accent-highlight: transparent;
+}
+#zotero-lang-cat-table .row.highlighted:not(.selected) {
+  color: #999 !important;
 }

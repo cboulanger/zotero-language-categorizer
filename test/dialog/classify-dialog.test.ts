@@ -3,8 +3,11 @@ import {
   buildRows,
   previewRows,
   formatCreators,
+  DialogController,
 } from "../../src/modules/dialog/classify-dialog";
 import type { LanguageClassifier } from "../../src/modules/classifiers/types";
+
+const fakeWin = { setTimeout: (fn: () => void) => fn() } as unknown as Window;
 
 function makeItem(
   title: string,
@@ -101,6 +104,45 @@ describe("classify-dialog", function () {
       const rows = buildRows([makeItem("Hello World")]);
       expect(() => previewRows(rows, throwingClassifier)).to.not.throw();
       expect(rows[0].code).to.be.null;
+    });
+  });
+
+  describe("DialogController row exclusion", function () {
+    it("rowData() marks a fresh row as not highlighted", function () {
+      const rows = buildRows([makeItem("Title")]);
+      const controller = new DialogController(fakeWin, rows);
+      expect(controller.rowData(0).highlighted).to.equal("");
+    });
+
+    it("rowData() highlights an excluded row and prefixes change with 🚫", function () {
+      const rows = buildRows([makeItem("Title")]);
+      rows[0].code = "en";
+      rows[0].excluded = true;
+      const controller = new DialogController(fakeWin, rows);
+      const data = controller.rowData(0);
+      expect(data.highlighted).to.equal("1");
+      expect(data.change.startsWith("🚫 ")).to.be.true;
+    });
+
+    it("runApply() skips excluded rows even when they have a code", async function () {
+      const item = makeItem("Title") as unknown as Parameters<
+        typeof buildRows
+      >[0][number] & {
+        setField(f: string, v: string): void;
+        saveTx(): Promise<unknown>;
+      };
+      let saved = false;
+      item.setField = () => {
+        saved = true;
+      };
+      item.saveTx = async () => {};
+      const rows = buildRows([item]);
+      rows[0].code = "en";
+      rows[0].excluded = true;
+      const controller = new DialogController(fakeWin, rows);
+      await controller.runApply();
+      expect(saved).to.be.false;
+      expect(rows[0].status).to.equal("pending");
     });
   });
 });

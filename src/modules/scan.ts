@@ -25,6 +25,7 @@ export function getEligibleItems<T extends ScannableItem>(items: T[]): T[] {
 // (respects the user's current collection/search/subcollection/sort state).
 export function getScopedEligibleItems(): Zotero.Item[] {
   const pane = Zotero.getActiveZoteroPane();
+  if (!pane) return [];
   const items = pane.getSortedItems();
   return getEligibleItems(items);
 }

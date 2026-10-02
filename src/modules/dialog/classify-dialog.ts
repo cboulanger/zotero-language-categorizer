@@ -1,4 +1,7 @@
-import { VirtualizedTableHelper } from "zotero-plugin-toolkit";
+import {
+  ProgressWindowHelper,
+  VirtualizedTableHelper,
+} from "zotero-plugin-toolkit";
 import { getClassifier } from "../classifiers";
 import { getString } from "../../utils/locale";
 import type { LanguageClassifier } from "../classifiers/types";
@@ -12,6 +15,7 @@ export interface RowState {
   code: string | null;
   reliable: boolean | null;
   status: "pending" | "success" | "error";
+  excluded: boolean;
 }
 
 type CreatorLike = { lastName: string };
@@ -33,6 +37,7 @@ export function buildRows(
     code: null,
     reliable: null,
     status: "pending",
+    excluded: false,
   }));
 }
 
@@ -77,8 +82,7 @@ export const DIALOG_WINDOW_TYPE = "zotero-lang-cat:dialog";
 // if the user triggers the menu entry again while it's already open.
 export function openClassifyDialog(items: ApplyableItem[]): void {
   const existing = Services.wm.getMostRecentWindow(DIALOG_WINDOW_TYPE) as
-    | (Window & { focus(): void })
-    | null;
+    (Window & { focus(): void }) | null;
   if (existing) {
     existing.focus();
     return;
@@ -115,6 +119,9 @@ export class DialogController {
     const explanation = doc.getElementById(
       "zotero-lang-cat-explanation",
     ) as HTMLElement;
+    const skipHint = doc.getElementById(
+      "zotero-lang-cat-skip-hint",
+    ) as HTMLElement;
     const emptyState = doc.getElementById(
       "zotero-lang-cat-empty-state",
     ) as HTMLElement;
@@ -135,6 +142,7 @@ export class DialogController {
     doc.title = getString("dialog-title");
     heading.textContent = getString("dialog-heading");
     explanation.textContent = getString("dialog-explanation");
+    skipHint.textContent = getString("dialog-skip-hint");
     emptyState.textContent = getString("dialog-empty-state");
     cancelButton.textContent = getString("dialog-cancel");
     actionButton.textContent = getString("dialog-apply");
@@ -185,12 +193,23 @@ export class DialogController {
       ])
       .setProp("multiSelect", false)
       .setProp("onSelectionChange", () => {})
+      .setProp("onActivate", (_e: Event, indices: number[]) => {
+        for (const i of indices) {
+          const row = this.rows[i];
+          if (row) row.excluded = !row.excluded;
+        }
+        this.table?.treeInstance.invalidate();
+      })
       .setContainerId("zotero-lang-cat-table-container");
-    this.table.render();
 
     // Opening the dialog performs the classification immediately (it's fast
     // enough not to need a separate "Preview" step); Apply only writes.
-    void this.classify(actionButton);
+    // render()'s mount is async — treeInstance isn't set until its
+    // onfulfilled callback fires, so classify() (which invalidates the
+    // tree) must not start until then.
+    this.table.render(undefined, () => {
+      void this.classify(actionButton);
+    });
   }
 
   rowData(i: number): Record<string, string> {
@@ -201,25 +220,47 @@ export class DialogController {
         ? `${row.code} (?)`
         : row.code
       : "…";
+    const change = `${oldValue} → ${newValue}`;
     return {
       title: row.title,
       creators: row.creators,
-      change: `${oldValue} → ${newValue}`,
+      change: row.excluded ? `🚫 ${change}` : change,
       status:
         row.status === "success" ? "✓" : row.status === "error" ? "✗" : "",
+      highlighted: row.excluded ? "1" : "",
     };
   }
 
   async classify(actionButton: HTMLButtonElement): Promise<void> {
+    const total = this.rows.length;
+    const progress = new ProgressWindowHelper(
+      getString("progress-classify-headline"),
+    )
+      .createLine({
+        text: getString("progress-items-processed", {
+          args: { current: 0, total },
+        }),
+        progress: 0,
+      })
+      .show(-1);
     try {
       const classifier = getClassifier();
+      let processed = 0;
       for (const group of chunk(this.rows, CHUNK_SIZE)) {
         previewRows(group, classifier);
+        processed += group.length;
+        progress.changeLine({
+          text: getString("progress-items-processed", {
+            args: { current: processed, total },
+          }),
+          progress: Math.round((processed / total) * 100),
+        });
         this.table?.treeInstance.invalidate();
         await new Promise((r) => this.win.setTimeout(r, 0));
       }
     } finally {
       actionButton.disabled = false;
+      progress.startCloseTimer(2000);
     }
   }
 
@@ -235,7 +276,7 @@ export class DialogController {
   }
 
   async runApply(): Promise<void> {
-    const toApply = this.rows.filter((r) => r.code);
+    const toApply = this.rows.filter((r) => r.code && !r.excluded);
     for (const group of chunk(toApply, CHUNK_SIZE)) {
       for (const row of group) {
         try {
