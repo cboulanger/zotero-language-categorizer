@@ -84,6 +84,8 @@ export function openClassifyDialog(items: ApplyableItem[]): void {
 export class DialogController {
   table?: VirtualizedTableHelper;
   rows: RowState[];
+  applied = false;
+  private cancelButton?: HTMLButtonElement;
 
   constructor(
     private win: Window,
@@ -106,8 +108,16 @@ export class DialogController {
     const cancelButton = doc.getElementById(
       "zotero-lang-cat-cancel",
     ) as HTMLButtonElement;
+    this.cancelButton = cancelButton;
 
     cancelButton.addEventListener("click", () => this.win.close());
+    actionButton.addEventListener("click", () => {
+      if (this.applied) {
+        this.win.close();
+      } else {
+        void this.onApplyClick(actionButton);
+      }
+    });
 
     if (this.rows.length === 0) {
       emptyState.hidden = false;
@@ -130,8 +140,6 @@ export class DialogController {
       .setProp("onSelectionChange", () => {})
       .setContainerId("zotero-lang-cat-table-container");
     this.table.render();
-
-    actionButton.addEventListener("click", () => this.onApplyClick(actionButton));
 
     // Opening the dialog performs the classification immediately (it's fast
     // enough not to need a separate "Preview" step); Apply only writes.
@@ -171,8 +179,12 @@ export class DialogController {
   async onApplyClick(button: HTMLButtonElement): Promise<void> {
     button.disabled = true;
     await this.runApply();
+    this.applied = true;
     button.textContent = "Done";
-    button.disabled = true;
+    button.disabled = false;
+    // Cancel is redundant once changes are applied — there's nothing left
+    // to cancel, and "Done" now closes the dialog on its own.
+    if (this.cancelButton) this.cancelButton.disabled = true;
   }
 
   async runApply(): Promise<void> {

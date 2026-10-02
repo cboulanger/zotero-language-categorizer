@@ -250,12 +250,15 @@ hand-designed.)
   (rather than returning `null`), that row's prediction is just left blank
   instead of leaving the whole batch — and the Apply button — stuck, since
   Apply is only re-enabled once the classification pass finishes.
-- Buttons: **Cancel** (always enabled, closes the dialog) and **Apply**
-  (disabled until classification finishes, then writes). There is no
-  separate Preview step or button — opening the dialog classifies
-  immediately, since the classifier is fast enough that a manual trigger
-  would just be friction. Apply's one job is writing the already-computed
-  predictions.
+- Buttons: **Cancel** and **Apply**. Apply starts disabled until
+  classification finishes, then writes. There is no separate Preview step or
+  button — opening the dialog classifies immediately, since the classifier
+  is fast enough that a manual trigger would just be friction. Once Apply's
+  write batch finishes, it relabels to **Done** and stays clickable (another
+  click just closes the dialog, same as Cancel), while **Cancel** itself
+  becomes disabled — once changes are applied there's nothing left to
+  cancel, so leaving it enabled would be a redundant, slightly misleading
+  second "close" action next to Done.
 - Classification and Apply both process the item list in small chunks (e.g.
   50 items at a time) with a yield (`await new Promise(r => setTimeout(r, 0))`)
   between chunks, calling `table.treeInstance.invalidate()` after each
@@ -284,11 +287,13 @@ hand-designed.)
    then `await item.saveTx()`; on success paint a green check in Status and
    repaint; on a thrown error (e.g. the item was concurrently modified or
    deleted) paint a red marker instead and continue to the next row — one
-   failure never aborts the batch. The button becomes disabled and reads
-   "Done" once the batch finishes.
-6. **Cancel** is available at every stage. Before classification finishes or
-   before Apply is clicked, it's a no-op exit — nothing has been written yet.
-   During/after Apply, whatever has already been saved stays saved — each
+   failure never aborts the batch. Once the batch finishes, the button
+   relabels to "Done" (stays enabled — another click closes the dialog) and
+   Cancel becomes disabled.
+6. **Cancel** is available up through Apply being clicked. Before
+   classification finishes or before Apply is clicked, it's a no-op exit —
+   nothing has been written yet. During Apply, whatever has already been
+   saved stays saved — each
    item's write is its own transaction, not one all-or-nothing batch.
 
 ## Error handling
