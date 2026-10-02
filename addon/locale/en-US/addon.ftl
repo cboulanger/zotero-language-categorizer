@@ -4,6 +4,7 @@ menu-classify =
 dialog-title = Classify Item Languages
 dialog-heading = Classify Item Languages
 dialog-explanation = Detects the language of each item's title and abstract and writes the corresponding ISO 639-1 code into the language field — the format Zotero's citation style processor expects. Items that already have a valid code are left untouched.
+dialog-skip-hint = Double-click a row to skip it — incorrectly classified items won't be changed when you apply.
 dialog-iso-link-text = What is ISO 639-1?
 dialog-iso-link-href = https://en.wikipedia.org/wiki/ISO_639-1
 dialog-empty-state = No items without a language code found in the current view.

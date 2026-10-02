@@ -119,6 +119,9 @@ export class DialogController {
     const explanation = doc.getElementById(
       "zotero-lang-cat-explanation",
     ) as HTMLElement;
+    const skipHint = doc.getElementById(
+      "zotero-lang-cat-skip-hint",
+    ) as HTMLElement;
     const emptyState = doc.getElementById(
       "zotero-lang-cat-empty-state",
     ) as HTMLElement;
@@ -139,6 +142,7 @@ export class DialogController {
     doc.title = getString("dialog-title");
     heading.textContent = getString("dialog-heading");
     explanation.textContent = getString("dialog-explanation");
+    skipHint.textContent = getString("dialog-skip-hint");
     emptyState.textContent = getString("dialog-empty-state");
     cancelButton.textContent = getString("dialog-cancel");
     actionButton.textContent = getString("dialog-apply");
