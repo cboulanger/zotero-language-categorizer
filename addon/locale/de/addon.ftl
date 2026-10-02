@@ -13,3 +13,5 @@ dialog-done = Fertig
 dialog-column-creators = Beteiligte
 dialog-column-title = Titel
 dialog-column-change = Änderung
+progress-classify-headline = Sprachen werden klassifiziert…
+progress-items-processed = { $current }/{ $total } Einträge verarbeitet

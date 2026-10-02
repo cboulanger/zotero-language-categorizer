@@ -15,4 +15,6 @@ export type FluentMessageId =
   | 'dialog-iso-link-href'
   | 'dialog-iso-link-text'
   | 'dialog-title'
-  | 'menu-classify';
+  | 'menu-classify'
+  | 'progress-classify-headline'
+  | 'progress-items-processed';

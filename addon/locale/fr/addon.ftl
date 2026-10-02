@@ -13,3 +13,5 @@ dialog-done = Terminé
 dialog-column-creators = Auteurs
 dialog-column-title = Titre
 dialog-column-change = Modification
+progress-classify-headline = Classement des langues en cours…
+progress-items-processed = { $current }/{ $total } documents traités

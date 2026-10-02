@@ -13,3 +13,5 @@ dialog-done = Done
 dialog-column-creators = Creators
 dialog-column-title = Title
 dialog-column-change = Change
+progress-classify-headline = Classifying item languages…
+progress-items-processed = { $current }/{ $total } items processed
