@@ -254,17 +254,15 @@ the commit history itself decides whether and how to release.
   every release. Zotero's installed copy of the plugin polls the stable
   `updates.json` URL; the actual file it downloads is still the immutable,
   versioned GitHub Release asset.
-- **Known gap, not yet resolved:** no git tag exists yet for this repo, and
-  none of the commits made so far use Conventional Commit prefixes, so
+- No git tag exists yet for this repo, and none of the commits made before
+  this pipeline landed use Conventional Commit prefixes, so
   semantic-release's commit-analyzer won't find anything release-worthy in
-  the existing history — the first release will only happen on the next
-  properly-prefixed commit after this pipeline lands, and semantic-release
-  will treat that as a from-scratch first release (defaulting to `1.0.0` for
-  a `feat` commit) rather than continuing from `package.json`'s current
-  `0.1.0`, since semantic-release computes versions purely from git tag
-  history, not from `package.json`. Whether to seed an initial `v0.1.0` tag
-  to preserve pre-1.0 versioning, or accept starting at `1.0.0`, is an open
-  decision for the user.
+  that history — the first release only happens on the next
+  properly-prefixed commit afterward. Decided: no `v0.1.0` tag is seeded;
+  semantic-release starts fresh and will land on `1.0.0` for that first
+  `feat` commit (its default first-release version), not on `package.json`'s
+  pre-pipeline `0.1.0` — semantic-release computes versions purely from git
+  tag history, never from `package.json`.
 
 ### Lifecycle
 
