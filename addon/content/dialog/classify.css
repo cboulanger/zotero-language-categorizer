@@ -1,0 +1,36 @@
+.zotero-lang-cat-dialog-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 12px 12px 0;
+  box-sizing: border-box;
+}
+#zotero-lang-cat-table-container {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+#zotero-lang-cat-table-container .virtualized-table-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.zotero-lang-cat-button-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 0;
+}
+.zotero-lang-cat-status-unreliable {
+  color: #b05a00;
+}
+.zotero-lang-cat-status-success::before {
+  content: "✓";
+  color: #2e7d32;
+}
+.zotero-lang-cat-status-error::before {
+  content: "✗";
+  color: #c62828;
+}
