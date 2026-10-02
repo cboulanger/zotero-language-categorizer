@@ -1,6 +1,7 @@
 import { config } from "../package.json";
 import hooks from "./hooks";
 import { createZToolkit } from "./utils/ztoolkit";
+import { DialogController } from "./modules/dialog/classify-dialog";
 
 class Addon {
   public data: {
@@ -28,7 +29,7 @@ class Addon {
       ztoolkit: createZToolkit(),
     };
     this.hooks = hooks;
-    this.api = {};
+    this.api = { DialogController };
   }
 }
 
