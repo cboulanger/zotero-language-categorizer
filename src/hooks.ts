@@ -1,5 +1,7 @@
 import { initLocale } from "./utils/locale";
 import { createZToolkit } from "./utils/ztoolkit";
+import { getScopedEligibleItems } from "./modules/scan";
+import { openClassifyDialog } from "./modules/dialog/classify-dialog";
 
 async function onStartup() {
   await Promise.all([
@@ -9,6 +11,22 @@ async function onStartup() {
   ]);
 
   initLocale();
+
+  Zotero.MenuManager.registerMenu({
+    menuID: "zotero-lang-cat-tools-menu",
+    pluginID: addon.data.config.addonID,
+    target: "main/menubar/tools",
+    menus: [
+      {
+        menuType: "menuitem",
+        l10nID: "zotero-lang-cat-menu-classify",
+        onCommand: () => {
+          const items = getScopedEligibleItems();
+          openClassifyDialog(items);
+        },
+      },
+    ],
+  });
 
   await Promise.all(
     Zotero.getMainWindows().map((win) => onMainWindowLoad(win)),
@@ -29,6 +47,9 @@ async function onMainWindowUnload(win: Window): Promise<void> {
 
 function onShutdown(): void {
   ztoolkit.unregisterAll();
+  for (const win of Services.wm.getEnumerator("zotero-lang-cat:dialog")) {
+    (win as Window).close();
+  }
   // Remove addon object
   addon.data.alive = false;
   // @ts-expect-error - Plugin instance is not typed
