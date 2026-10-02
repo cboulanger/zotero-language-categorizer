@@ -63,6 +63,20 @@ config/UI for choosing between adapters — but the factory already takes a
 classifier id, so adding a second adapter plus a pref-backed selector later
 is a matter of registering it, not restructuring.
 
+`reliable` is a `boolean`, not a numeric `0–1` confidence, deliberately:
+`eld`'s `getScores()` values are an internal relative ranking, not documented
+as calibrated probabilities (they don't sum to 1), and `isReliable()`'s own
+threshold is undisclosed. Exposing a numeric confidence here would mean
+fabricating a normalization eld doesn't actually provide. The boolean asks
+each adapter the one question it can honestly answer — "is this good enough
+to trust" — in whatever terms fit its own algorithm, rather than forcing
+every future adapter's internal metric onto one normalized scale that may
+not mean the same thing across algorithms. The trade-off: a future adapter
+with genuinely calibrated probabilities would have to collapse that number
+down to `true`/`false` to fit this interface, losing it for things like
+sorting by confidence or a user-adjustable threshold — acceptable for v1
+since only `eld` exists today.
+
 ```ts
 // src/classifiers/types.ts
 export interface ClassificationResult {
@@ -152,7 +166,7 @@ plain-JS plugin would have to hand-roll.
 
 ### Directory layout
 
-```
+```text
 zotero-language-categorizer/
 ├── manifest.json
 ├── bootstrap.ts                     # lifecycle hooks (startup/shutdown/window load+unload)
