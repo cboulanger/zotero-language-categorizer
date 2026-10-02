@@ -5,8 +5,8 @@ import {
 } from "../../src/modules/dialog/classify-dialog";
 import type { LanguageClassifier } from "../../src/modules/classifiers/types";
 
-function makeItem(title: string, abstractNote = "") {
-  const fields: Record<string, string> = { title, abstractNote, language: "" };
+function makeItem(title: string, abstractNote = "", language = "") {
+  const fields: Record<string, string> = { title, abstractNote, language };
   return {
     isRegularItem: () => true,
     library: { editable: true },
@@ -32,6 +32,11 @@ describe("buildRows", () => {
     expect(rows).to.have.length(1);
     expect(rows[0].status).to.equal("pending");
     expect(rows[0].code).to.be.null;
+  });
+
+  it("captures the item's current (pre-replacement) language field", () => {
+    const rows = buildRows([makeItem("Titel", "", "German")]);
+    expect(rows[0].currentLanguage).to.equal("German");
   });
 });
 

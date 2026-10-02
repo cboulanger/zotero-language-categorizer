@@ -6,8 +6,10 @@ Date: 2026-10-02
 
 A lightweight Zotero plugin that detects the natural language of each item's
 title + abstract and writes the result into the item's `language` field, for
-items that don't already have one set. Existing `language` values are never
-touched.
+items that don't already have a valid ISO 639-1 code there. A field that's
+empty, or holds something other than a real code (e.g. a spelled-out name
+like "German" instead of "de"), is in scope; a field that already holds a
+recognized code is left untouched.
 
 ## Scope decisions
 
@@ -19,14 +21,23 @@ touched.
   No context-menu entry, no toolbar button.
 - **Eligible item filter:** `item.isRegularItem()` (excludes notes,
   attachments, annotations), item's library is editable (excludes read-only
-  group libraries), `item.getField('language')` is empty, and the item has a
-  non-empty title or abstract to classify on.
+  group libraries), the item has a non-empty title or abstract to classify
+  on, and `item.getField('language')` is either empty or not a recognized
+  ISO 639-1 code (see "Overwrite policy" below).
 - **Low-confidence predictions:** shown in the preview, visually marked as
   low-confidence (not hidden, not excluded). The user applies all shown
   predictions as a batch; there's no per-row include/exclude checkbox in v1.
-- **Overwrite policy:** never. The eligibility filter itself excludes any item
-  with a non-empty `language` field, so there's no separate confirmation step
-  for overwriting.
+- **Overwrite policy:** a `language` field is only left untouched when it
+  already holds a recognized ISO 639-1 code (optionally with a region/script
+  subtag, e.g. `en-US`) — checked against the standard 184-code ISO 639-1
+  set, case-insensitively, by primary subtag. Anything else in that field
+  (empty, or a spelled-out name like "German", "English") is in scope and
+  gets overwritten on Apply. This was widened from the original "never
+  touch a non-empty field" rule after discovering many real libraries store
+  full language names rather than codes — those are exactly the entries the
+  user wants corrected, not skipped. Because this now performs real
+  overwrites (not just blank-fills), the preview table shows a **Current**
+  column alongside **Detected**, so Apply's effect is visible before it runs.
 
 ## Classifier — research and recommendation
 
@@ -272,9 +283,13 @@ hand-designed.)
 - A trivial fake `LanguageClassifier` (fixed/canned results) is used in
   dialog-level tests so Preview/Apply flow can be tested without depending on
   real classification output.
+- Unit tests for `isIso6391Code` (`iso639-1.ts`): valid codes, codes with a
+  region subtag, case-insensitivity, spelled-out names, unrecognized strings.
 - Manual verification checklist in a dedicated dev Zotero profile:
-  - Library with items in several languages, some with `language` already
-    set (must remain untouched after Apply).
+  - Library with items in several languages, some already holding a valid
+    ISO 639-1 code (must remain untouched after Apply) and some holding a
+    spelled-out name like "German" (must be corrected to the code on Apply,
+    with the preview's Current column showing the old value beforehand).
   - Title-only items (no abstract) — low-confidence marker should appear.
   - A read-only group library — its items never appear in the dialog.
   - A large collection (hundreds+ items) — Preview/Apply stay responsive,

@@ -3,4 +3,4 @@
 /* eslint-disable */
 // @ts-nocheck
 export type FluentMessageId =
-  | 'menu-classify-label';
+  | 'menu-classify';

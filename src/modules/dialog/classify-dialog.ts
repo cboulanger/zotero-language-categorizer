@@ -7,6 +7,7 @@ export interface RowState {
   item: ScannableItem;
   title: string;
   itemType: string;
+  currentLanguage: string;
   code: string | null;
   reliable: boolean | null;
   status: "pending" | "success" | "error";
@@ -19,6 +20,7 @@ export function buildRows(
     item,
     title: item.getField("title") || "(no title)",
     itemType: item.itemType,
+    currentLanguage: item.getField("language") || "",
     code: null,
     reliable: null,
     status: "pending",
@@ -109,6 +111,7 @@ export class DialogController {
       .setProp("columns", [
         { dataKey: "title", label: "Title", flex: 3 },
         { dataKey: "itemType", label: "Type", fixedWidth: true, width: 110 },
+        { dataKey: "currentLanguage", label: "Current", fixedWidth: true, width: 90 },
         { dataKey: "code", label: "Detected", fixedWidth: true, width: 80 },
         { dataKey: "status", label: "", fixedWidth: true, width: 32 },
       ])
@@ -126,6 +129,7 @@ export class DialogController {
     return {
       title: row.title,
       itemType: row.itemType,
+      currentLanguage: row.currentLanguage,
       code: row.reliable === false && code ? `${code} (?)` : code,
       status:
         row.status === "success" ? "✓" : row.status === "error" ? "✗" : "",

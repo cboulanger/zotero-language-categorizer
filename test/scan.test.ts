@@ -38,8 +38,20 @@ describe("isEligible", () => {
     expect(isEligible(makeItem({ editable: false }))).to.be.false;
   });
 
-  it("rejects an item that already has a language set", () => {
+  it("rejects an item that already has a valid ISO 639-1 code", () => {
     expect(isEligible(makeItem({ language: "fr" }))).to.be.false;
+  });
+
+  it("rejects an item whose code has a region subtag", () => {
+    expect(isEligible(makeItem({ language: "en-US" }))).to.be.false;
+  });
+
+  it("accepts an item whose language field is a spelled-out name, not a code", () => {
+    expect(isEligible(makeItem({ language: "German" }))).to.be.true;
+  });
+
+  it("accepts an item whose language field is empty after trimming", () => {
+    expect(isEligible(makeItem({ language: "   " }))).to.be.true;
   });
 
   it("rejects an item with no title and no abstract", () => {
