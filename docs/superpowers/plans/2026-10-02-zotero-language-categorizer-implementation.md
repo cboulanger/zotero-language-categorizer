@@ -24,10 +24,12 @@
 ### Task 1: Scaffold the plugin and verify the build pipeline
 
 **Files:**
+
 - Create: entire project scaffold (`addon/`, `src/`, `package.json`, etc.) from `zotero-plugin-template`
 - Modify: `package.json` (`config` block), `addon/manifest.json`, `.env`
 
 **Interfaces:**
+
 - Produces: a working `npm run build` pipeline later tasks add code to.
 
 - [ ] **Step 1: Fetch the template into the current directory**
@@ -82,6 +84,7 @@ cp .env.example .env
 ```
 
 Edit `.env`:
+
 ```
 ZOTERO_PLUGIN_ZOTERO_BIN_PATH=/Applications/Zotero.app/Contents/MacOS/zotero
 ZOTERO_PLUGIN_PROFILE_PATH=/Volumes/Hub/Users/christianboulanger/Library/Application Support/Zotero/Profiles/lang-cat-dev
@@ -122,12 +125,14 @@ git commit -m "Scaffold plugin from zotero-plugin-template"
 ### Task 2: Classifier adapter module
 
 **Files:**
+
 - Create: `src/modules/classifiers/types.ts`
 - Create: `src/modules/classifiers/eld-classifier.ts`
 - Create: `src/modules/classifiers/index.ts`
 - Test: `test/classifiers/eld-classifier.test.ts` (adjust to the real test dir found in Task 1 Step 7 if it differs)
 
 **Interfaces:**
+
 - Produces: `ClassificationResult { code: string; reliable: boolean }`, `LanguageClassifier { id: string; classify(text: string): ClassificationResult | null }`, `getClassifier(id?: string): LanguageClassifier`. These are the only things Task 3+ import from this module.
 
 - [ ] **Step 1: Add the `eld` dependency**
@@ -239,7 +244,9 @@ const registry: Record<string, LanguageClassifier> = {
 
 const DEFAULT_CLASSIFIER_ID = "eld";
 
-export function getClassifier(id: string = DEFAULT_CLASSIFIER_ID): LanguageClassifier {
+export function getClassifier(
+  id: string = DEFAULT_CLASSIFIER_ID,
+): LanguageClassifier {
   const classifier = registry[id];
   if (!classifier) throw new Error(`Unknown classifier: ${id}`);
   return classifier;
@@ -268,10 +275,12 @@ git commit -m "Add eld-backed classifier adapter with getClassifier factory"
 ### Task 3: Item eligibility filter (`scan.ts`)
 
 **Files:**
+
 - Create: `src/modules/scan.ts`
 - Test: `test/scan.test.ts`
 
 **Interfaces:**
+
 - Consumes: nothing from earlier tasks.
 - Produces: `ScannableItem` (structural interface), `isEligible(item: ScannableItem): boolean`, `getEligibleItems(items: ScannableItem[]): ScannableItem[]`, `getScopedEligibleItems(): ScannableItem[]` (the only one of these that touches the live `Zotero` global — Task 7 calls this one).
 
@@ -281,15 +290,21 @@ git commit -m "Add eld-backed classifier adapter with getClassifier factory"
 
 ```ts
 import { expect } from "chai";
-import { isEligible, getEligibleItems, type ScannableItem } from "../src/modules/scan";
+import {
+  isEligible,
+  getEligibleItems,
+  type ScannableItem,
+} from "../src/modules/scan";
 
-function makeItem(overrides: Partial<{
-  isRegular: boolean;
-  editable: boolean;
-  language: string;
-  title: string;
-  abstractNote: string;
-}> = {}): ScannableItem {
+function makeItem(
+  overrides: Partial<{
+    isRegular: boolean;
+    editable: boolean;
+    language: string;
+    title: string;
+    abstractNote: string;
+  }> = {},
+): ScannableItem {
   const {
     isRegular = true,
     editable = true,
@@ -327,7 +342,9 @@ describe("isEligible", () => {
   });
 
   it("accepts an item with only an abstract and no title", () => {
-    expect(isEligible(makeItem({ title: "", abstractNote: "Some abstract text." }))).to.be.true;
+    expect(
+      isEligible(makeItem({ title: "", abstractNote: "Some abstract text." })),
+    ).to.be.true;
   });
 });
 
@@ -405,11 +422,13 @@ git commit -m "Add item eligibility filter for language classification scope"
 ### Task 4: Dialog shell (static XHTML + empty table)
 
 **Files:**
+
 - Create: `addon/content/dialog/classify.xhtml`
 - Create: `addon/content/dialog/classify.css`
 - Modify: `addon/manifest.json` (none needed — content dir is already packaged), `src/modules/classifiers/index.ts` (no change)
 
 **Interfaces:**
+
 - Produces: a dialog document with a `#zotero-lang-cat-table-container` div, a `#zotero-lang-cat-empty-state` div (hidden by default), and `#zotero-lang-cat-close` / `#zotero-lang-cat-action` buttons for Task 5 to wire up. No behavior yet — this task only gets the static shell to render.
 
 - [ ] **Step 1: Write the dialog XHTML**
@@ -523,10 +542,12 @@ git commit -m "Add static dialog shell for the classify UI"
 ### Task 5: Dialog controller — table + Preview flow
 
 **Files:**
+
 - Create: `src/modules/dialog/classify-dialog.ts`
 - Test: `test/dialog/classify-dialog.test.ts` (tests the row-state logic in isolation from the real `VirtualizedTableHelper`/DOM)
 
 **Interfaces:**
+
 - Consumes: `getClassifier` from `src/modules/classifiers/index.ts`; `ScannableItem`/`isEligible` types from `src/modules/scan.ts`.
 - Produces: `RowState { item: ScannableItem; title: string; itemType: string; code: string | null; reliable: boolean | null; status: "pending" | "success" | "error" }`, `buildRows(items)`, `previewRows(rows, classifier)` (mutates rows in place, returns void — called by both the dialog and the test).
 
@@ -536,7 +557,11 @@ git commit -m "Add static dialog shell for the classify UI"
 
 ```ts
 import { expect } from "chai";
-import { buildRows, previewRows, type RowState } from "../../src/modules/dialog/classify-dialog";
+import {
+  buildRows,
+  previewRows,
+  type RowState,
+} from "../../src/modules/dialog/classify-dialog";
 import type { LanguageClassifier } from "../../src/modules/classifiers/types";
 
 function makeItem(title: string, abstractNote = "") {
@@ -553,7 +578,10 @@ const fakeClassifier: LanguageClassifier = {
   id: "fake",
   classify(text) {
     if (!text.trim()) return null;
-    return { code: text.includes("bonjour") ? "fr" : "en", reliable: text.length > 20 };
+    return {
+      code: text.includes("bonjour") ? "fr" : "en",
+      reliable: text.length > 20,
+    };
   },
 };
 
@@ -611,7 +639,9 @@ export interface RowState {
   status: "pending" | "success" | "error";
 }
 
-export function buildRows(items: (ScannableItem & { itemType: string })[]): RowState[] {
+export function buildRows(
+  items: (ScannableItem & { itemType: string })[],
+): RowState[] {
   return items.map((item) => ({
     item,
     title: item.getField("title") || "(no title)",
@@ -622,7 +652,10 @@ export function buildRows(items: (ScannableItem & { itemType: string })[]): RowS
   }));
 }
 
-export function previewRows(rows: RowState[], classifier: LanguageClassifier): void {
+export function previewRows(
+  rows: RowState[],
+  classifier: LanguageClassifier,
+): void {
   for (const row of rows) {
     const title = row.item.getField("title") || "";
     const abstractNote = row.item.getField("abstractNote") || "";
@@ -664,9 +697,11 @@ git commit -m "Add dialog row-state model and Preview classification logic"
 ### Task 6: Wire the table and Preview/Apply buttons into the live dialog
 
 **Files:**
+
 - Modify: `src/modules/dialog/classify-dialog.ts` (add `openClassifyDialog(items)`, the only export the bootstrap hook calls)
 
 **Interfaces:**
+
 - Consumes: `VirtualizedTableHelper` from `zotero-plugin-toolkit`; `RowState`, `buildRows`, `previewRows`, `chunk`, `CHUNK_SIZE` from this same module; `getClassifier` from `../classifiers`.
 - Produces: `openClassifyDialog(items: (ScannableItem & { itemType: string; setField: Function; saveTx: Function })[]): void` — called by Task 7's menu handler.
 
@@ -725,9 +760,15 @@ export class DialogController {
   init(): void {
     const doc = this.win.document;
     const emptyState = doc.getElementById("zotero-lang-cat-empty-state")!;
-    const tableContainer = doc.getElementById("zotero-lang-cat-table-container")!;
-    const actionButton = doc.getElementById("zotero-lang-cat-action") as HTMLButtonElement;
-    const closeButton = doc.getElementById("zotero-lang-cat-close") as HTMLButtonElement;
+    const tableContainer = doc.getElementById(
+      "zotero-lang-cat-table-container",
+    )!;
+    const actionButton = doc.getElementById(
+      "zotero-lang-cat-action",
+    ) as HTMLButtonElement;
+    const closeButton = doc.getElementById(
+      "zotero-lang-cat-close",
+    ) as HTMLButtonElement;
 
     if (this.rows.length === 0) {
       emptyState.hidden = false;
@@ -753,7 +794,9 @@ export class DialogController {
     this.table.render();
 
     closeButton.addEventListener("click", () => this.win.close());
-    actionButton.addEventListener("click", () => this.onActionClick(actionButton));
+    actionButton.addEventListener("click", () =>
+      this.onActionClick(actionButton),
+    );
   }
 
   rowData(i: number): Record<string, string> {
@@ -850,10 +893,12 @@ git commit -m "Wire VirtualizedTableHelper dialog with Preview/Apply flow"
 ### Task 7: Bootstrap wiring — Tools menu entry and lifecycle
 
 **Files:**
+
 - Modify: `src/hooks.ts` (or the real equivalent found in Task 1 Step 7) — `onStartup`, `onShutdown`
 - Create: `addon/locale/en-US/zotero-language-categorizer.ftl`
 
 **Interfaces:**
+
 - Consumes: `getScopedEligibleItems` from `../modules/scan`, `openClassifyDialog` from `../modules/dialog/classify-dialog`.
 - Produces: nothing further consumed by other tasks — this is the final wiring point.
 
@@ -928,6 +973,7 @@ git commit -m "Register Tools-menu entry and dialog teardown on shutdown"
 ### Task 8: End-to-end manual verification and packaging
 
 **Files:**
+
 - None created — this task runs the plugin for real and records results; it does not produce more code unless a bug is found (in which case, fix it in the relevant task's file and re-commit).
 
 - [ ] **Step 1: Launch the dev profile**
@@ -941,6 +987,7 @@ Expected: Zotero opens with the plugin loaded (check Tools menu for "Classify It
 - [ ] **Step 2: Manual checklist**
 
 Walk through each item from the spec's Testing section against the running dev profile, noting pass/fail for each:
+
 - A collection with items in several languages, titles/abstracts only — Preview shows a plausible detected code per item.
 - An item that already has `language` set — confirm it never appears in the dialog's rows.
 - A title-only item (no abstract) — confirm it still gets a prediction, with the low-confidence marker when applicable.

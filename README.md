@@ -267,27 +267,43 @@ For detailed build steps, refer to the [zotero-plugin-scaffold documentation](ht
 
 ### 5 Release
 
-To build and release, use
+This project does **not** use the scaffold's own `bumpp`-based `release`
+command. Releases are fully automated via
+[semantic-release](https://semantic-release.gitbook.io/), driven by
+[Conventional Commits](https://www.conventionalcommits.org/) — there's no
+manual version prompt to run.
 
-```shell
-# version increase, git add, commit and push
-# then on ci, npm run build, and release to GitHub
-npm run release
-```
+1. Write commits following the convention (`feat: …`, `fix: …`,
+   `BREAKING CHANGE: …`, etc.). A `commitlint` hook (Husky `commit-msg`,
+   installed automatically via `npm install`) rejects non-conforming
+   messages. `npm run commit` gives you a guided prompt (commitizen) if you'd
+   rather not write the header by hand.
+2. Push to `main`. Once `.github/workflows/ci.yml` (lint/build/test)
+   succeeds, `.github/workflows/release.yml` runs `npx semantic-release`,
+   which:
+   - Decides whether a release is warranted, and whether it's a
+     patch/minor/major, purely from the commit types since the last release
+     (a `fix:` → patch, `feat:` → minor, a `BREAKING CHANGE:` footer →
+     major; anything else triggers no release at all).
+   - Generates `CHANGELOG.md` from those commits.
+   - Bumps `package.json`'s `version` (no npm registry publish — this isn't
+     an npm package).
+   - Runs `node scripts/update-updates-json.mjs <version> && npm run build`
+     to refresh `updates.json` and produce the `.xpi`.
+   - Commits the bumped `package.json`, `package-lock.json`,
+     `updates.json`, and `CHANGELOG.md` back to `main`.
+   - Creates the GitHub Release for the new version and uploads the `.xpi`.
+
+Zotero polls a stable URL for updates —
+`https://raw.githubusercontent.com/<owner>/<repo>/main/updates.json`
+(`zotero-plugin.config.ts`'s `updateURL`) — which always points at the
+latest release's versioned, immutable `.xpi` asset.
 
 > [!note]
-> This will use [Bumpp](https://github.com/antfu-collective/bumpp) to prompt for the new version number, locally bump the version, run any (pre/post)version scripts defined in `package.json`, commit, build (optional), tag the commit with the version number and push commits and git tags. Bumpp can be configured in `zotero-plugin-config.ts`; for example, add `release: { bumpp: { execute: "npm run build" } }` to also build before committing.
->
-> Subsequently GitHub Action will rebuild the plugin and use `zotero-plugin-scaffold`'s `release` script to publish the XPI to GitHub Release. In addition, a separate release (tag: `release`) will be created or updated that includes update manifests `update.json` and `update-beta.json` as assets. These will be available at `https://github.com/{{owner}}/{{repo}}/releases/download/release/update*.json`.
-
-#### About Prerelease
-
-The template defines `prerelease` as the beta version of the plugin, when you select a `prerelease` version in Bumpp (with `-` in the version number). The build script will create a new `update-beta.json` for prerelease use, which ensures that users of the regular version won't be able to update to the beta. Only users who have manually downloaded and installed the beta will be able to update to the next beta automatically.
-
-When the next regular release is updated, both `update.json` and `update-beta.json` will be updated (on the special `release` release, see above) so that both regular and beta users can update to the new regular release.
-
-> [!warning]
-> Strictly, distinguishing between Zotero 6 and Zotero 7 compatible plugin versions should be done by configuring `applications.zotero.strict_min_version` in `addons.__addonID__.updates[]` of `update.json` respectively, so that Zotero recognizes it properly, see <https://www.zotero.org/support/dev/zotero_7_for_developers#updaterdf_updatesjson>.
+> There's no `prerelease`/beta channel in this setup (unlike the scaffold's
+> default). If pre-1.0/beta releases become needed, semantic-release
+> supports this via its own `branches` configuration (e.g. a `beta` branch
+> in `.releaserc.json`) rather than a version-number convention.
 
 ## Details
 

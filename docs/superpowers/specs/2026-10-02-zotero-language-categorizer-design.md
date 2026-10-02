@@ -49,11 +49,11 @@ and ideally emitting a format close to what Zotero's `language` field expects.
 
 Options considered:
 
-| Library | Size | Accuracy on short text | Output format | Maintenance |
-|---|---|---|---|---|
-| **eld** (`efficient-language-detector-js`) | XS model: 940KB raw / ~264KB gzipped | Good; ships `isReliable()` confidence flag | **ISO 639-1** directly (e.g. `"en"`) | Active (v2.0.3 at time of writing, Apache-2.0) |
-| tinyld | 68–110KB (web build) | Best raw accuracy (~95% at 24 chars) in its own benchmarks | own codes, would need a mapping table | Inactive 3+ years (algorithm is static data, so not fatal, but no bugfixes/updates) |
-| franc-min | 119KB | Weakest on short text (~65% in third-party benchmarks) | ISO 639-3, needs mapping to 639-1 | Actively maintained, widely used (unified/remark ecosystem) |
+| Library                                    | Size                                 | Accuracy on short text                                     | Output format                         | Maintenance                                                                         |
+| ------------------------------------------ | ------------------------------------ | ---------------------------------------------------------- | ------------------------------------- | ----------------------------------------------------------------------------------- |
+| **eld** (`efficient-language-detector-js`) | XS model: 940KB raw / ~264KB gzipped | Good; ships `isReliable()` confidence flag                 | **ISO 639-1** directly (e.g. `"en"`)  | Active (v2.0.3 at time of writing, Apache-2.0)                                      |
+| tinyld                                     | 68–110KB (web build)                 | Best raw accuracy (~95% at 24 chars) in its own benchmarks | own codes, would need a mapping table | Inactive 3+ years (algorithm is static data, so not fatal, but no bugfixes/updates) |
+| franc-min                                  | 119KB                                | Weakest on short text (~65% in third-party benchmarks)     | ISO 639-3, needs mapping to 639-1     | Actively maintained, widely used (unified/remark ecosystem)                         |
 
 **Decision: `eld`, using its XS language-frequency database.** It is the only
 option that is simultaneously actively maintained, emits Zotero-ready ISO
@@ -92,13 +92,13 @@ since only `eld` exists today.
 ```ts
 // src/classifiers/types.ts
 export interface ClassificationResult {
-  code: string;      // ISO 639-1 language code
+  code: string; // ISO 639-1 language code
   reliable: boolean;
 }
 
 export interface LanguageClassifier {
-  id: string;                              // stable id, e.g. "eld"
-  classify(text: string): ClassificationResult | null;  // null = no usable prediction
+  id: string; // stable id, e.g. "eld"
+  classify(text: string): ClassificationResult | null; // null = no usable prediction
 }
 ```
 
@@ -133,7 +133,9 @@ const DEFAULT_CLASSIFIER_ID = "eld";
 // `id` is unused today (always the default) but is already the extension
 // point: a future pref pane would read `Zotero.Prefs.get('zotero-lang-cat.classifierId')`
 // and pass it here, with no changes needed in scan.ts or the dialog.
-export function getClassifier(id: string = DEFAULT_CLASSIFIER_ID): LanguageClassifier {
+export function getClassifier(
+  id: string = DEFAULT_CLASSIFIER_ID,
+): LanguageClassifier {
   const classifier = registry[id];
   if (!classifier) throw new Error(`Unknown classifier: ${id}`);
   return classifier;
@@ -205,6 +207,64 @@ zotero-language-categorizer/
 `zotero-plugin-config.ts`, `tsconfig.json`, etc. — sit alongside these per the
 template's own conventions; not enumerated here since they're scaffolded, not
 hand-designed.)
+
+### Release pipeline
+
+Replaced the template's default (`zotero-plugin-scaffold`'s own `release`
+command — an interactive `bumpp` version prompt run locally, triggering a
+reusable `zotero-plugin-dev/workflows` GitHub Action on the pushed tag) with
+**semantic-release**, driven by Conventional Commits, after the user
+compared it against a working semantic-release setup in another of their
+projects (`zotero-rag`) and preferred it. No more manual version prompts —
+the commit history itself decides whether and how to release.
+
+- **Enforcement:** `commitlint` (`.commitlintrc.json`, extending
+  `@commitlint/config-conventional`) runs on every commit via a Husky
+  `commit-msg` hook (`.husky/commit-msg`), installed automatically by the
+  `prepare` npm script. `npm run commit` (commitizen + `cz-conventional-changelog`,
+  configured via `.czrc`) is available as an optional guided prompt for
+  writing a compliant message, but isn't required — any commit meeting the
+  convention passes.
+- **CI wiring:** `.github/workflows/ci.yml` (lint/build/test) is unchanged.
+  `.github/workflows/release.yml` was rewritten to trigger via
+  `workflow_run` once CI completes successfully on `main` (gated on both
+  `conclusion == 'success'` and `head_branch == 'main'`, since `workflow_run`
+  fires for every CI run, PRs included), then simply runs `npx semantic-release`.
+- **`.releaserc.json` plugin pipeline:** `commit-analyzer` (decide
+  patch/minor/major from commit types, or no release) → `release-notes-generator`
+  → `changelog` (writes `CHANGELOG.md`) → `npm` (bumps `package.json`'s
+  `version` field only — `npmPublish: false`, this project is never
+  published to the npm registry) → `exec` (runs
+  `node scripts/update-updates-json.mjs ${nextRelease.version} && npm run build`,
+  i.e. updates `updates.json` for the already-bumped version, then builds
+  the `.xpi` using it, since the build's `buildVersion` define pulls from
+  `package.json`) → `git` (commits the bumped `package.json`,
+  `package-lock.json`, `updates.json`, and `CHANGELOG.md` back to `main`,
+  `[skip ci]` to avoid a release loop) → `github` (creates the GitHub
+  Release for the new tag and uploads `.scaffold/build/zotero-language-categorizer.xpi`
+  as an asset).
+- **Update mechanism changed along with this:** `zotero-plugin.config.ts`'s
+  `updateURL` now points at a stable
+  `https://raw.githubusercontent.com/<owner>/<repo>/main/updates.json` (a
+  file committed at the repo root, always reflecting the latest version),
+  rather than the scaffold's own convention of overwriting assets on a fixed
+  `release` git tag. `scripts/update-updates-json.mjs` is what keeps that
+  file's `update_link` pointed at the correct versioned release-asset URL
+  (`.../releases/download/v<version>/zotero-language-categorizer.xpi`) on
+  every release. Zotero's installed copy of the plugin polls the stable
+  `updates.json` URL; the actual file it downloads is still the immutable,
+  versioned GitHub Release asset.
+- **Known gap, not yet resolved:** no git tag exists yet for this repo, and
+  none of the commits made so far use Conventional Commit prefixes, so
+  semantic-release's commit-analyzer won't find anything release-worthy in
+  the existing history — the first release will only happen on the next
+  properly-prefixed commit after this pipeline lands, and semantic-release
+  will treat that as a from-scratch first release (defaulting to `1.0.0` for
+  a `feat` commit) rather than continuing from `package.json`'s current
+  `0.1.0`, since semantic-release computes versions purely from git tag
+  history, not from `package.json`. Whether to seed an initial `v0.1.0` tag
+  to preserve pre-1.0 versioning, or accept starting at `1.0.0`, is an open
+  decision for the user.
 
 ### Lifecycle
 
@@ -318,9 +378,6 @@ documents don't reliably navigate on link clicks, and opening in the user's
 actual browser is what's wanted here anyway). Both the link text and its
 `href` are per-locale `addon.ftl` messages, so each translation points at
 that language's own Wikipedia edition.
-
-main process or from inside a dialog's own copy of the module.
-main process or from inside a dialog's own copy of the module.
 
 ## Data flow
 

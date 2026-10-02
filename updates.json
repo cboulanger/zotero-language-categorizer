@@ -1,0 +1,12 @@
+{
+  "addons": {
+    "zotero-language-categorizer@cboulanger.github.io": {
+      "updates": [
+        {
+          "version": "0.1.0",
+          "update_link": "https://github.com/cboulanger/zotero-language-categorizer/releases/download/v0.1.0/zotero-language-categorizer.xpi"
+        }
+      ]
+    }
+  }
+}

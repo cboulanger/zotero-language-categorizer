@@ -7,11 +7,13 @@ export default defineConfig({
   name: pkg.config.addonName,
   id: pkg.config.addonID,
   namespace: pkg.config.addonRef,
-  updateURL: `https://github.com/{{owner}}/{{repo}}/releases/download/release/${
-    pkg.version.includes("-") ? "update-beta.json" : "update.json"
-  }`,
-  xpiDownloadLink:
-    "https://github.com/{{owner}}/{{repo}}/releases/download/v{{version}}/{{xpiName}}.xpi",
+  // Stable URL Zotero polls for updates — content lives in updates.json at
+  // the repo root, kept current by semantic-release (see .releaserc.json
+  // and scripts/update-updates-json.mjs), not by this scaffold's own
+  // `release` command (unused now — releases go through semantic-release).
+  updateURL: `https://raw.githubusercontent.com/${pkg.repository.url
+    .replace(/^git\+https:\/\/github\.com\//, "")
+    .replace(/\.git$/, "")}/main/updates.json`,
 
   build: {
     assets: ["addon/**/*.*"],

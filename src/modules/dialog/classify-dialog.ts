@@ -76,9 +76,9 @@ export const DIALOG_WINDOW_TYPE = "zotero-lang-cat:dialog";
 // Idempotent: focuses the existing dialog instead of opening a second one
 // if the user triggers the menu entry again while it's already open.
 export function openClassifyDialog(items: ApplyableItem[]): void {
-  const existing = Services.wm.getMostRecentWindow(
-    DIALOG_WINDOW_TYPE,
-  ) as (Window & { focus(): void }) | null;
+  const existing = Services.wm.getMostRecentWindow(DIALOG_WINDOW_TYPE) as
+    | (Window & { focus(): void })
+    | null;
   if (existing) {
     existing.focus();
     return;
@@ -109,7 +109,9 @@ export class DialogController {
 
   init(): void {
     const doc = this.win.document;
-    const heading = doc.getElementById("zotero-lang-cat-heading") as HTMLElement;
+    const heading = doc.getElementById(
+      "zotero-lang-cat-heading",
+    ) as HTMLElement;
     const explanation = doc.getElementById(
       "zotero-lang-cat-explanation",
     ) as HTMLElement;

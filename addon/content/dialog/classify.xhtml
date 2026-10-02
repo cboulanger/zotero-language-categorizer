@@ -1,50 +1,73 @@
 <?xml version="1.0"?>
-<?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
-<?xml-stylesheet href="chrome://zotero/skin/zotero.css" type="text/css"?>
-<?xml-stylesheet href="chrome://zotero-platform/content/zotero-react-client.css" type="text/css"?>
-<?xml-stylesheet href="chrome://zotero-platform/content/zotero.css" type="text/css"?>
+<?xml-stylesheet href="chrome://global/skin/" type="text/css"?> <?xml-stylesheet
+href="chrome://zotero/skin/zotero.css" type="text/css"?> <?xml-stylesheet
+href="chrome://zotero-platform/content/zotero-react-client.css"
+type="text/css"?> <?xml-stylesheet
+href="chrome://zotero-platform/content/zotero.css" type="text/css"?>
 <!DOCTYPE html>
-<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
-      xmlns:xul="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
-      windowtype="zotero-lang-cat:dialog">
-<head>
-  <title>Classify Item Languages</title>
-  <meta charset="utf-8"/>
-  <link rel="stylesheet" href="classify.css"/>
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      Services.scriptloader.loadSubScript("chrome://zotero/content/include.js", this);
-      Services.scriptloader.loadSubScript(
-        "chrome://zotero-lang-cat/content/scripts/zotero-lang-cat.js",
-        window,
-      );
-      const rows = window.arguments?.[0]?.rows ?? [];
-      const controller = new Zotero.LanguageCategorizer.api.DialogController(window, rows);
-      controller.init();
-    });
-  </script>
-</head>
-<body>
-  <div class="zotero-lang-cat-dialog-container">
-    <header class="zotero-lang-cat-header">
-      <h1 id="zotero-lang-cat-heading">Classify Item Languages</h1>
-      <p id="zotero-lang-cat-explanation">
-        Detects the language of each item's title and abstract and fills in
-        the language field. Items that already have a valid language code
-        are left untouched.
-      </p>
-      <a id="zotero-lang-cat-iso-link" class="zotero-lang-cat-link" href="#">What is ISO 639-1?</a>
-    </header>
-    <div class="zotero-lang-cat-body">
-      <p id="zotero-lang-cat-empty-state" hidden="hidden">
-        No items without a language code found in the current view.
-      </p>
-      <div id="zotero-lang-cat-table-container"></div>
+<html
+  lang="en"
+  xmlns="http://www.w3.org/1999/xhtml"
+  xmlns:xul="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+  windowtype="zotero-lang-cat:dialog"
+>
+  <head>
+    <title>Classify Item Languages</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="classify.css" />
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        Services.scriptloader.loadSubScript(
+          "chrome://zotero/content/include.js",
+          this,
+        );
+        Services.scriptloader.loadSubScript(
+          "chrome://zotero-lang-cat/content/scripts/zotero-lang-cat.js",
+          window,
+        );
+        const rows = window.arguments?.[0]?.rows ?? [];
+        const controller = new Zotero.LanguageCategorizer.api.DialogController(
+          window,
+          rows,
+        );
+        controller.init();
+      });
+    </script>
+  </head>
+  <body>
+    <div class="zotero-lang-cat-dialog-container">
+      <header class="zotero-lang-cat-header">
+        <h1 id="zotero-lang-cat-heading">Classify Item Languages</h1>
+        <p id="zotero-lang-cat-explanation">
+          Detects the language of each item's title and abstract and fills in
+          the language field. Items that already have a valid language code are
+          left untouched.
+        </p>
+        <a id="zotero-lang-cat-iso-link" class="zotero-lang-cat-link" href="#"
+          >What is ISO 639-1?</a
+        >
+      </header>
+      <div class="zotero-lang-cat-body">
+        <p id="zotero-lang-cat-empty-state" hidden="hidden">
+          No items without a language code found in the current view.
+        </p>
+        <div id="zotero-lang-cat-table-container"></div>
+      </div>
+      <footer class="zotero-lang-cat-button-row">
+        <button
+          id="zotero-lang-cat-cancel"
+          class="zotero-lang-cat-btn zotero-lang-cat-btn-secondary"
+        >
+          Cancel
+        </button>
+        <button
+          id="zotero-lang-cat-action"
+          class="zotero-lang-cat-btn zotero-lang-cat-btn-primary"
+          disabled="disabled"
+        >
+          Apply
+        </button>
+      </footer>
     </div>
-    <footer class="zotero-lang-cat-button-row">
-      <button id="zotero-lang-cat-cancel" class="zotero-lang-cat-btn zotero-lang-cat-btn-secondary">Cancel</button>
-      <button id="zotero-lang-cat-action" class="zotero-lang-cat-btn zotero-lang-cat-btn-primary" disabled="disabled">Apply</button>
-    </footer>
-  </div>
-</body>
+  </body>
 </html>
