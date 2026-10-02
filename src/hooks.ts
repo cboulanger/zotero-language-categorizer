@@ -39,6 +39,7 @@ async function onStartup() {
 
 async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
   addon.data.ztoolkit = createZToolkit();
+  win.MozXULElement.insertFTLIfNeeded(`${addon.data.config.addonRef}-addon.ftl`);
 }
 
 async function onMainWindowUnload(win: Window): Promise<void> {
