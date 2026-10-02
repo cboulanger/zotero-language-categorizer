@@ -32,7 +32,7 @@
   - `getString("progress-classify-headline")` → `string`
   - `getString("progress-items-processed", { args: { current: number, total: number } })` → `string`
 
-- [ ] **Step 1: Add the two keys to `addon/locale/en-US/addon.ftl`**
+- [x] **Step 1: Add the two keys to `addon/locale/en-US/addon.ftl`**
 
 Append to the end of the file:
 
@@ -41,7 +41,7 @@ progress-classify-headline = Classifying item languages…
 progress-items-processed = { $current }/{ $total } items processed
 ```
 
-- [ ] **Step 2: Add the German translation to `addon/locale/de/addon.ftl`**
+- [x] **Step 2: Add the German translation to `addon/locale/de/addon.ftl`**
 
 Append to the end of the file:
 
@@ -50,7 +50,7 @@ progress-classify-headline = Sprachen werden klassifiziert…
 progress-items-processed = { $current }/{ $total } Einträge verarbeitet
 ```
 
-- [ ] **Step 3: Add the French translation to `addon/locale/fr/addon.ftl`**
+- [x] **Step 3: Add the French translation to `addon/locale/fr/addon.ftl`**
 
 Append to the end of the file:
 
@@ -59,7 +59,7 @@ progress-classify-headline = Classement des langues en cours…
 progress-items-processed = { $current }/{ $total } documents traités
 ```
 
-- [ ] **Step 4: Add the Spanish translation to `addon/locale/es/addon.ftl`**
+- [x] **Step 4: Add the Spanish translation to `addon/locale/es/addon.ftl`**
 
 Append to the end of the file:
 
@@ -68,7 +68,7 @@ progress-classify-headline = Clasificando el idioma de los elementos…
 progress-items-processed = { $current }/{ $total } elementos procesados
 ```
 
-- [ ] **Step 5: Hand-edit `typings/i10n.d.ts` to add the two new message IDs**
+- [x] **Step 5: Hand-edit `typings/i10n.d.ts` to add the two new message IDs**
 
 The file is a single sorted union type. Open `typings/i10n.d.ts` and insert the two new entries in alphabetical order (they sort right after `'menu-classify'` and before nothing else existing, since `'progress-...'` > all current `'dialog-...'`/`'menu-classify'` entries — confirm exact alphabetical placement against the current file content before editing). The result must read, in full:
 
@@ -95,12 +95,12 @@ export type FluentMessageId =
   | 'progress-items-processed';
 ```
 
-- [ ] **Step 6: Verify formatting and typecheck**
+- [x] **Step 6: Verify formatting and typecheck**
 
 Run: `npx prettier --check addon/locale/*/addon.ftl typings/i10n.d.ts && npx tsc --noEmit`
 Expected: both commands exit 0 with no output (prettier reports "All matched files use Prettier code style!").
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add addon/locale/en-US/addon.ftl addon/locale/de/addon.ftl addon/locale/fr/addon.ftl addon/locale/es/addon.ftl typings/i10n.d.ts
@@ -135,7 +135,7 @@ async classify(actionButton: HTMLButtonElement): Promise<void> {
 }
 ```
 
-- [ ] **Step 1: Add the `ProgressWindowHelper` import**
+- [x] **Step 1: Add the `ProgressWindowHelper` import**
 
 In `src/modules/dialog/classify-dialog.ts`, change:
 
@@ -149,7 +149,7 @@ to:
 import { ProgressWindowHelper, VirtualizedTableHelper } from "zotero-plugin-toolkit";
 ```
 
-- [ ] **Step 2: Rewrite `classify()` to create, update, and close the popup**
+- [x] **Step 2: Rewrite `classify()` to create, update, and close the popup**
 
 Replace the entire method body shown above with:
 
@@ -190,17 +190,17 @@ async classify(actionButton: HTMLButtonElement): Promise<void> {
 
 Note: `total` is `this.rows.length`, always `> 0` here — `init()`'s empty-state early return (`if (this.rows.length === 0) { ...; return; }`) means `classify()` is never invoked with zero rows, so no divide-by-zero guard is needed in the percentage calculation.
 
-- [ ] **Step 3: Typecheck**
+- [x] **Step 3: Typecheck**
 
 Run: `npx tsc --noEmit`
 Expected: exits 0, no output.
 
-- [ ] **Step 4: Lint and format check**
+- [x] **Step 4: Lint and format check**
 
 Run: `npx prettier --check src/modules/dialog/classify-dialog.ts && npx eslint src/modules/dialog/classify-dialog.ts`
 Expected: both exit 0; prettier reports "All matched files use Prettier code style!".
 
-- [ ] **Step 5: Run the existing unit test suite for this file**
+- [x] **Step 5: Run the existing unit test suite for this file**
 
 Run: `npx mocha --require ts-node/register test/dialog/classify-dialog.test.ts` if this resolves and runs standalone in this environment; otherwise skip straight to manual verification in Step 6 and note in the commit message that automated tests for this file require the full `zotero-plugin test` Zotero-backed runner, which is unavailable in this sandbox (pre-existing `@swc/core` native-binding issue — same cause as the `npm run build` failure noted in Global Constraints).
 Expected: the existing tests (`buildRows`, `previewRows`, `formatCreators`) still pass unchanged — this task doesn't touch any of those pure functions.
@@ -217,7 +217,7 @@ Since `DialogController.classify()` touches the live `Zotero` global (`ProgressW
 6. Open the dialog on a collection with fewer than 50 items (single chunk) and confirm the popup still appears, jumps straight to `<total>/<total>`, and closes — no special-casing broke the small-batch path.
 7. Switch Zotero's UI locale to German, French, or Spanish and repeat step 3 to confirm the translated headline/counter text renders correctly (no raw Fluent IDs shown).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/modules/dialog/classify-dialog.ts
