@@ -3,7 +3,9 @@ menu-classify =
 
 dialog-title = Classer la langue des documents
 dialog-heading = Classer la langue des documents
-dialog-explanation = Détecte la langue du titre et du résumé de chaque document et renseigne le champ « langue ». Les documents ayant déjà un code de langue valide ne sont pas modifiés.
+dialog-explanation = Détecte la langue du titre et du résumé de chaque document et inscrit le code ISO 639-1 correspondant dans le champ « langue » — le format attendu par le processeur de styles de citation de Zotero. Les documents ayant déjà un code valide ne sont pas modifiés.
+dialog-iso-link-text = Qu'est-ce que l'ISO 639-1 ?
+dialog-iso-link-href = https://fr.wikipedia.org/wiki/ISO_639-1
 dialog-empty-state = Aucun document sans code de langue trouvé dans la vue actuelle.
 dialog-cancel = Annuler
 dialog-apply = Appliquer

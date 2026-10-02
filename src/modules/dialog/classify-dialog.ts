@@ -113,6 +113,9 @@ export class DialogController {
     const cancelButton = doc.getElementById(
       "zotero-lang-cat-cancel",
     ) as HTMLButtonElement;
+    const isoLink = doc.getElementById(
+      "zotero-lang-cat-iso-link",
+    ) as HTMLAnchorElement;
     this.cancelButton = cancelButton;
 
     doc.title = getString("dialog-title");
@@ -121,6 +124,14 @@ export class DialogController {
     emptyState.textContent = getString("dialog-empty-state");
     cancelButton.textContent = getString("dialog-cancel");
     actionButton.textContent = getString("dialog-apply");
+
+    const isoLinkHref = getString("dialog-iso-link-href");
+    isoLink.textContent = getString("dialog-iso-link-text");
+    isoLink.href = isoLinkHref;
+    isoLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      Zotero.launchURL(isoLinkHref);
+    });
 
     cancelButton.addEventListener("click", () => this.win.close());
     actionButton.addEventListener("click", () => {

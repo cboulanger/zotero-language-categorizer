@@ -12,5 +12,7 @@ export type FluentMessageId =
   | 'dialog-empty-state'
   | 'dialog-explanation'
   | 'dialog-heading'
+  | 'dialog-iso-link-href'
+  | 'dialog-iso-link-text'
   | 'dialog-title'
   | 'menu-classify';

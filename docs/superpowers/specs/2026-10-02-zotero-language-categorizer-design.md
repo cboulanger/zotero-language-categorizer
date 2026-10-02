@@ -303,6 +303,17 @@ base. Adding a language is just adding its directory; nothing else to wire
 up, since `getString()` and `Zotero.MenuManager`'s `l10nID` both resolve
 against whatever locale Zotero negotiates at runtime.
 
+The explanation text names the written value as an **ISO 639-1** code and
+says it's the format Zotero's citation style processor expects — not just
+"language code" — since that's the detail that actually matters to a user
+deciding whether to trust the plugin's output. A small link underneath,
+"What is ISO 639-1?", opens the corresponding Wikipedia article via
+`Zotero.launchURL()` (not a plain `<a>` navigation — chrome-privileged
+documents don't reliably navigate on link clicks, and opening in the user's
+actual browser is what's wanted here anyway). Both the link text and its
+`href` are per-locale `addon.ftl` messages, so each translation points at
+that language's own Wikipedia edition.
+
 main process or from inside a dialog's own copy of the module.
 main process or from inside a dialog's own copy of the module.
 
