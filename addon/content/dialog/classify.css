@@ -2,6 +2,7 @@ html,
 body {
   height: 100%;
   margin: 0;
+  overflow: hidden;
 }
 body {
   font-family:
@@ -13,9 +14,11 @@ body {
   display: flex;
   flex-direction: column;
   height: 100%;
+  overflow: hidden;
   box-sizing: border-box;
 }
 .zotero-lang-cat-header {
+  flex: 0 0 auto;
   padding: 16px 20px 12px;
   border-bottom: 1px solid #e5e5e5;
 }
@@ -56,6 +59,7 @@ body {
   color: #666;
 }
 .zotero-lang-cat-button-row {
+  flex: 0 0 auto;
   display: flex;
   justify-content: flex-end;
   gap: 10px;
