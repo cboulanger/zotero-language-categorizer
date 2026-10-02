@@ -30,6 +30,7 @@
     "update-deps": "npm update --save"
   },
   "dependencies": {
+    "eld": "^2.1.0",
     "zotero-plugin-toolkit": "^5.1.0-beta.13"
   },
   "devDependencies": {
