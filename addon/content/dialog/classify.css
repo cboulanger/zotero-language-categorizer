@@ -1,6 +1,5 @@
 html,
 body {
-  height: 100%;
   margin: 0;
   overflow: hidden;
 }
@@ -10,10 +9,18 @@ body {
     sans-serif;
   color: #1d1d1f;
 }
+/*
+ * Anchored directly to the chrome dialog window's viewport edges rather
+ * than relying on a height: 100% chain through html/body — in this Gecko
+ * chrome-dialog context that chain does not reliably track the live window
+ * size on resize, leaving blank window space below a content box sized to
+ * its initial layout instead of growing to fill the window.
+ */
 .zotero-lang-cat-dialog-container {
+  position: fixed;
+  inset: 0;
   display: flex;
   flex-direction: column;
-  height: 100%;
   overflow: hidden;
   box-sizing: border-box;
 }
