@@ -3,18 +3,29 @@ import { FluentMessageId } from "../../typings/i10n";
 
 export { initLocale, getString, getLocaleID };
 
+// Lazily created and cached per execution scope. This module (like the rest
+// of the bundle) is loaded once into the main process and again, separately,
+// into each dialog window via loadSubScript — those are independent script
+// executions with their own module instances, so this cannot be shared via
+// the `addon` global (which only exists in the main process's copy).
+let l10n: any;
+
+function getL10n() {
+  if (!l10n) {
+    const Ctor =
+      typeof Localization === "undefined"
+        ? ztoolkit.getGlobal("Localization")
+        : Localization;
+    l10n = new Ctor([`${config.addonRef}-addon.ftl`], true);
+  }
+  return l10n;
+}
+
 /**
- * Initialize locale data
+ * Pre-warm the locale data. Safe to call more than once.
  */
 function initLocale() {
-  const l10n = new (
-    typeof Localization === "undefined"
-      ? ztoolkit.getGlobal("Localization")
-      : Localization
-  )([`${config.addonRef}-addon.ftl`], true);
-  addon.data.locale = {
-    current: l10n,
-  };
+  getL10n();
 }
 
 /**
@@ -74,7 +85,7 @@ function _getString(
 ): string {
   const localStringWithPrefix = `${config.addonRef}-${localeString}`;
   const { branch, args } = options;
-  const pattern = addon.data.locale?.current.formatMessagesSync([
+  const pattern = getL10n().formatMessagesSync([
     { id: localStringWithPrefix, args },
   ])[0] as Pattern;
 

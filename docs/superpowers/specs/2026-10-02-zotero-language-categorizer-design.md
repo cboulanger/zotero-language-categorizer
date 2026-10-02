@@ -225,10 +225,14 @@ hand-designed.)
   `window.openDialog("chrome://zotero-lang-cat/content/dialog/classify.xhtml", ...)`.
 - Includes the two extra stylesheets `VirtualizedTableHelper` requires
   (`zotero-react-client.css`, `zotero.css`) and the flex/min-height container
-  CSS the toolkit docs specify (plus an explicit `html, body { height: 100% }`,
-  without which the flex chain collapses to content size instead of the
-  window's real height), so the table fills the window instead of being
-  squeezed into a content-sized strip.
+  CSS the toolkit docs specify. The root container is anchored with
+  `position: fixed; inset: 0` (not `height: 100%` on `html`/`body`) — in this
+  Gecko chrome-dialog context a percentage-height chain through `html`/`body`
+  did not reliably track the live window size on resize, leaving blank
+  window space below content sized to its initial layout. `html`/`body` and
+  the container all get `overflow: hidden` so only the table panel (the one
+  element with `overflow: auto`) scrolls; header and footer are pinned via
+  `flex: 0 0 auto`.
 - Layout is header / body / footer, not just a bare table: a **header**
   (title + one-line explanation of what the plugin does and what it leaves
   untouched), a **body** that is the table (or the empty-state message) and
@@ -267,6 +271,28 @@ hand-designed.)
   rendering). (The installed `zotero-plugin-toolkit` version's
   `VirtualizedTable` only types a full `invalidate()`, not a per-row
   `invalidateRow(i)`, so a full repaint is triggered per update instead.)
+
+### Localization
+
+Every user-visible label — the Tools-menu entry, the dialog's window title,
+heading, explanation, empty-state message, both button labels (including the
+"Apply" → "Done" relabel), and the table's column headers — is a Fluent
+message in `addon/locale/en-US/addon.ftl`, not a hardcoded string. The menu
+entry goes through `Zotero.MenuManager`'s own `l10nID` mechanism; everything
+in the dialog goes through `getString()` (`src/utils/locale.ts`), which wraps
+a synchronous `Localization` instance.
+
+`getString()` had to be changed to not depend on the `addon` global: this
+bundle is loaded twice — once into the main process by `bootstrap.js`, and
+again into each dialog window via `Services.scriptloader.loadSubScript(url,
+window)` (see Dialog implementation above). Those are independent script
+executions with their own module instances; the dialog's load skips
+re-creating `addon` (the bundle's own startup guard checks whether
+`Zotero[addonInstance]` already exists), so a bare reference to the `addon`
+global inside dialog-context code throws. `getString()` now lazily creates
+and caches its own `Localization` instance per execution scope instead of
+reading `addon.data.locale`, so it works identically whether called from the
+main process or from inside a dialog's own copy of the module.
 
 ## Data flow
 

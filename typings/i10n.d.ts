@@ -3,4 +3,14 @@
 /* eslint-disable */
 // @ts-nocheck
 export type FluentMessageId =
+  | 'dialog-apply'
+  | 'dialog-cancel'
+  | 'dialog-column-change'
+  | 'dialog-column-creators'
+  | 'dialog-column-title'
+  | 'dialog-done'
+  | 'dialog-empty-state'
+  | 'dialog-explanation'
+  | 'dialog-heading'
+  | 'dialog-title'
   | 'menu-classify';

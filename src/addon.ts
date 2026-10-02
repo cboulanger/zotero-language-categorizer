@@ -11,9 +11,6 @@ class Addon {
     env: "development" | "production";
     initialized?: boolean;
     ztoolkit: ZToolkit;
-    locale?: {
-      current: any;
-    };
   };
   // Lifecycle hooks
   public hooks: typeof hooks;

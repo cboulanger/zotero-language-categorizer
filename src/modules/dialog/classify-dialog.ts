@@ -1,5 +1,6 @@
 import { VirtualizedTableHelper } from "zotero-plugin-toolkit";
 import { getClassifier } from "../classifiers";
+import { getString } from "../../utils/locale";
 import type { LanguageClassifier } from "../classifiers/types";
 import type { ScannableItem } from "../scan";
 
@@ -96,6 +97,10 @@ export class DialogController {
 
   init(): void {
     const doc = this.win.document;
+    const heading = doc.getElementById("zotero-lang-cat-heading") as HTMLElement;
+    const explanation = doc.getElementById(
+      "zotero-lang-cat-explanation",
+    ) as HTMLElement;
     const emptyState = doc.getElementById(
       "zotero-lang-cat-empty-state",
     ) as HTMLElement;
@@ -109,6 +114,13 @@ export class DialogController {
       "zotero-lang-cat-cancel",
     ) as HTMLButtonElement;
     this.cancelButton = cancelButton;
+
+    doc.title = getString("dialog-title");
+    heading.textContent = getString("dialog-heading");
+    explanation.textContent = getString("dialog-explanation");
+    emptyState.textContent = getString("dialog-empty-state");
+    cancelButton.textContent = getString("dialog-cancel");
+    actionButton.textContent = getString("dialog-apply");
 
     cancelButton.addEventListener("click", () => this.win.close());
     actionButton.addEventListener("click", () => {
@@ -131,9 +143,19 @@ export class DialogController {
       .setProp("getRowCount", () => this.rows.length)
       .setProp("getRowData", (i: number) => this.rowData(i))
       .setProp("columns", [
-        { dataKey: "creators", label: "Creators", fixedWidth: true, width: 130 },
-        { dataKey: "title", label: "Title", flex: 3 },
-        { dataKey: "change", label: "Change", fixedWidth: true, width: 140 },
+        {
+          dataKey: "creators",
+          label: getString("dialog-column-creators"),
+          fixedWidth: true,
+          width: 130,
+        },
+        { dataKey: "title", label: getString("dialog-column-title"), flex: 3 },
+        {
+          dataKey: "change",
+          label: getString("dialog-column-change"),
+          fixedWidth: true,
+          width: 140,
+        },
         { dataKey: "status", label: "", fixedWidth: true, width: 32 },
       ])
       .setProp("multiSelect", false)
@@ -180,7 +202,7 @@ export class DialogController {
     button.disabled = true;
     await this.runApply();
     this.applied = true;
-    button.textContent = "Done";
+    button.textContent = getString("dialog-done");
     button.disabled = false;
     // Cancel is redundant once changes are applied — there's nothing left
     // to cancel, and "Done" now closes the dialog on its own.
