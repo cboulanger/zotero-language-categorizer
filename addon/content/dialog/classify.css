@@ -1,3 +1,8 @@
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
 .zotero-lang-cat-dialog-container {
   display: flex;
   flex-direction: column;
