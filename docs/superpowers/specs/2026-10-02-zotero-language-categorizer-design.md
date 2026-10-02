@@ -36,8 +36,9 @@ recognized code is left untouched.
   touch a non-empty field" rule after discovering many real libraries store
   full language names rather than codes — those are exactly the entries the
   user wants corrected, not skipped. Because this now performs real
-  overwrites (not just blank-fills), the preview table shows a **Current**
-  column alongside **Detected**, so Apply's effect is visible before it runs.
+  overwrites (not just blank-fills), the dialog's **Change** column shows
+  `old value → new value` for every row, so Apply's effect is visible before
+  it runs.
 
 ## Classifier — research and recommendation
 
@@ -189,7 +190,7 @@ zotero-language-categorizer/
 │   ├── scan.ts                      # reads active pane's current item list, applies eligibility filter
 │   └── dialog/
 │       ├── classify.xhtml           # dialog document (VirtualizedTableHelper host)
-│       └── classify.ts              # dialog controller: Preview/Apply/Close wiring, chunked processing
+│       └── classify.ts              # dialog controller: auto-classify on open, Apply/Cancel wiring, chunked processing
 ├── locale/
 │   └── en-US/
 │       └── zotero-language-categorizer.ftl
@@ -221,26 +222,41 @@ hand-designed.)
 ### Dialog implementation
 
 - XHTML document with `windowtype="zotero-lang-cat:dialog"`, opened via
-  `window.openDialog("chrome://zotero-language-categorizer/content/dialog/classify.xhtml", ...)`.
+  `window.openDialog("chrome://zotero-lang-cat/content/dialog/classify.xhtml", ...)`.
 - Includes the two extra stylesheets `VirtualizedTableHelper` requires
   (`zotero-react-client.css`, `zotero.css`) and the flex/min-height container
-  CSS the toolkit docs specify, so the table renders as rows instead of
-  stacking vertically.
-- Table columns: Title (flex, truncated), Item Type (fixed), Detected
-  Language (fixed, filled in after Preview, blank before), Confidence (fixed,
-  shows a distinct marker when `!reliable`), Status (fixed-width, custom
-  `renderer` that paints nothing → a spinner-like placeholder during Apply →
-  a green check or red X once that row's write resolves or fails). The status
+  CSS the toolkit docs specify (plus an explicit `html, body { height: 100% }`,
+  without which the flex chain collapses to content size instead of the
+  window's real height), so the table fills the window instead of being
+  squeezed into a content-sized strip.
+- Layout is header / body / footer, not just a bare table: a **header**
+  (title + one-line explanation of what the plugin does and what it leaves
+  untouched), a **body** that is the table (or the empty-state message) and
+  takes all remaining vertical space, and a **footer** with the two buttons,
+  flat/modern styled (no native OS button chrome — custom flat background,
+  border-radius, a filled primary color for Apply, a neutral gray for
+  Cancel).
+- Table columns: Title (flex, truncated), Item Type (fixed), **Change**
+  (fixed — `old value → new value`, using a real arrow character; `—` when
+  there was no previous value, `…` while classification hasn't filled in a
+  prediction yet, and a `(?)` suffix on the new value when `!reliable`),
+  Status (fixed-width, custom `renderer` that paints nothing → a green check
+  or red X once that row's write resolves or fails during Apply). The status
   column is the progress indicator; there's no separate progress bar.
-- Buttons: **Close** (always enabled, closes the dialog) and a single button
-  that is **Preview** before classification has run, and becomes **Apply**
-  once Preview completes — same button, label and handler swapped, not two
-  separate buttons.
-- Preview and Apply both process the item list in small chunks (e.g. 50 items
-  at a time) with a yield (`await new Promise(r => setTimeout(r, 0))`) between
-  chunks, calling `table.treeInstance.invalidateRow(i)` per updated row, so
-  the UI stays responsive on large collections without needing to virtualize
-  the processing itself (the table is already virtualized for rendering).
+- Buttons: **Cancel** (always enabled, closes the dialog) and **Apply**
+  (disabled until classification finishes, then writes). There is no
+  separate Preview step or button — opening the dialog classifies
+  immediately, since the classifier is fast enough that a manual trigger
+  would just be friction. Apply's one job is writing the already-computed
+  predictions.
+- Classification and Apply both process the item list in small chunks (e.g.
+  50 items at a time) with a yield (`await new Promise(r => setTimeout(r, 0))`)
+  between chunks, calling `table.treeInstance.invalidate()` after each
+  update, so the UI stays responsive on large collections without needing to
+  virtualize the processing itself (the table is already virtualized for
+  rendering). (The installed `zotero-plugin-toolkit` version's
+  `VirtualizedTable` only types a full `invalidate()`, not a per-row
+  `invalidateRow(i)`, so a full repaint is triggered per update instead.)
 
 ## Data flow
 
@@ -248,20 +264,23 @@ hand-designed.)
 2. `scan.ts` reads the items currently shown in the active pane (respecting
    the user's current collection/search/sort/subcollection settings) and
    filters to eligible items as defined above.
-3. Dialog opens with one row per eligible item; Detected/Confidence/Status
-   columns start blank. If there are zero eligible items, Preview is disabled
-   and an empty-state message is shown instead of the table.
-4. **Preview**: classify each row's `title + abstractNote` via
-   `getClassifier().classify(...)`, fill in Detected Language and the confidence marker,
-   `invalidateRow` as each completes. On completion, the button switches to
-   **Apply**.
+3. Dialog opens with one row per eligible item, Change column showing
+   `old value → …` and Apply disabled. If there are zero eligible items, an
+   empty-state message is shown instead of the table and Apply stays
+   disabled. Classification starts automatically as soon as the dialog opens
+   — no separate trigger.
+4. Each row is classified via `getClassifier().classify(...)` in chunks; the
+   Change column updates to `old value → new value` (with the low-confidence
+   marker when applicable) as each chunk completes. Once every row has been
+   classified, Apply becomes enabled.
 5. **Apply**: for each row with a prediction, `item.setField('language', code)`
    then `await item.saveTx()`; on success paint a green check in Status and
-   `invalidateRow`; on a thrown error (e.g. the item was concurrently
-   modified or deleted) paint a red marker instead and continue to the next
-   row — one failure never aborts the batch.
-6. **Close** is available at every stage. Before Preview it's a no-op exit.
-   After Preview it discards in-memory predictions without writing anything.
+   repaint; on a thrown error (e.g. the item was concurrently modified or
+   deleted) paint a red marker instead and continue to the next row — one
+   failure never aborts the batch. The button becomes disabled and reads
+   "Done" once the batch finishes.
+6. **Cancel** is available at every stage. Before classification finishes or
+   before Apply is clicked, it's a no-op exit — nothing has been written yet.
    During/after Apply, whatever has already been saved stays saved — each
    item's write is its own transaction, not one all-or-nothing batch.
 
@@ -281,19 +300,19 @@ hand-designed.)
   exercise the low-confidence path), empty/whitespace-only input (must return
   `null`, not throw).
 - A trivial fake `LanguageClassifier` (fixed/canned results) is used in
-  dialog-level tests so Preview/Apply flow can be tested without depending on
-  real classification output.
+  dialog-level tests (`buildRows`/`previewRows`) so the row-state logic can
+  be tested without depending on real classification output.
 - Unit tests for `isIso6391Code` (`iso639-1.ts`): valid codes, codes with a
   region subtag, case-insensitivity, spelled-out names, unrecognized strings.
 - Manual verification checklist in a dedicated dev Zotero profile:
   - Library with items in several languages, some already holding a valid
     ISO 639-1 code (must remain untouched after Apply) and some holding a
     spelled-out name like "German" (must be corrected to the code on Apply,
-    with the preview's Current column showing the old value beforehand).
+    with the Change column showing `German → de` before Apply is clicked).
   - Title-only items (no abstract) — low-confidence marker should appear.
   - A read-only group library — its items never appear in the dialog.
-  - A large collection (hundreds+ items) — Preview/Apply stay responsive,
-    scrolling the virtualized table stays smooth.
+  - A large collection (hundreds+ items) — classification-on-open and Apply
+    stay responsive, scrolling the virtualized table stays smooth.
   - Disable → re-enable the plugin, and close → reopen the main window — no
     duplicate Tools-menu entries.
 

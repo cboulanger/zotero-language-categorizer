@@ -71,7 +71,6 @@ export function openClassifyDialog(items: ApplyableItem[]): void {
 export class DialogController {
   table?: VirtualizedTableHelper;
   rows: RowState[];
-  mode: "preview" | "apply" = "preview";
 
   constructor(
     private win: Window,
@@ -91,11 +90,11 @@ export class DialogController {
     const actionButton = doc.getElementById(
       "zotero-lang-cat-action",
     ) as HTMLButtonElement;
-    const closeButton = doc.getElementById(
-      "zotero-lang-cat-close",
+    const cancelButton = doc.getElementById(
+      "zotero-lang-cat-cancel",
     ) as HTMLButtonElement;
 
-    closeButton.addEventListener("click", () => this.win.close());
+    cancelButton.addEventListener("click", () => this.win.close());
 
     if (this.rows.length === 0) {
       emptyState.hidden = false;
@@ -111,8 +110,7 @@ export class DialogController {
       .setProp("columns", [
         { dataKey: "title", label: "Title", flex: 3 },
         { dataKey: "itemType", label: "Type", fixedWidth: true, width: 110 },
-        { dataKey: "currentLanguage", label: "Current", fixedWidth: true, width: 90 },
-        { dataKey: "code", label: "Detected", fixedWidth: true, width: 80 },
+        { dataKey: "change", label: "Change", fixedWidth: true, width: 140 },
         { dataKey: "status", label: "", fixedWidth: true, width: 32 },
       ])
       .setProp("multiSelect", false)
@@ -120,43 +118,45 @@ export class DialogController {
       .setContainerId("zotero-lang-cat-table-container");
     this.table.render();
 
-    actionButton.addEventListener("click", () => this.onActionClick(actionButton));
+    actionButton.addEventListener("click", () => this.onApplyClick(actionButton));
+
+    // Opening the dialog performs the classification immediately (it's fast
+    // enough not to need a separate "Preview" step); Apply only writes.
+    void this.classify(actionButton);
   }
 
   rowData(i: number): Record<string, string> {
     const row = this.rows[i];
-    const code = row.code ?? "";
+    const oldValue = row.currentLanguage || "—";
+    const newValue = row.code
+      ? row.reliable === false
+        ? `${row.code} (?)`
+        : row.code
+      : "…";
     return {
       title: row.title,
       itemType: row.itemType,
-      currentLanguage: row.currentLanguage,
-      code: row.reliable === false && code ? `${code} (?)` : code,
+      change: `${oldValue} → ${newValue}`,
       status:
         row.status === "success" ? "✓" : row.status === "error" ? "✗" : "",
     };
   }
 
-  async onActionClick(button: HTMLButtonElement): Promise<void> {
-    button.disabled = true;
-    if (this.mode === "preview") {
-      await this.runPreview();
-      button.textContent = "Apply";
-      this.mode = "apply";
-      button.disabled = false;
-    } else {
-      await this.runApply();
-      button.textContent = "Done";
-      button.disabled = true;
-    }
-  }
-
-  async runPreview(): Promise<void> {
+  async classify(actionButton: HTMLButtonElement): Promise<void> {
     const classifier = getClassifier();
     for (const group of chunk(this.rows, CHUNK_SIZE)) {
       previewRows(group, classifier);
       this.table?.treeInstance.invalidate();
       await new Promise((r) => this.win.setTimeout(r, 0));
     }
+    actionButton.disabled = false;
+  }
+
+  async onApplyClick(button: HTMLButtonElement): Promise<void> {
+    button.disabled = true;
+    await this.runApply();
+    button.textContent = "Done";
+    button.disabled = true;
   }
 
   async runApply(): Promise<void> {
