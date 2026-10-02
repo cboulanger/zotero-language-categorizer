@@ -1,4 +1,7 @@
-import { VirtualizedTableHelper } from "zotero-plugin-toolkit";
+import {
+  ProgressWindowHelper,
+  VirtualizedTableHelper,
+} from "zotero-plugin-toolkit";
 import { getClassifier } from "../classifiers";
 import { getString } from "../../utils/locale";
 import type { LanguageClassifier } from "../classifiers/types";
@@ -214,15 +217,35 @@ export class DialogController {
   }
 
   async classify(actionButton: HTMLButtonElement): Promise<void> {
+    const total = this.rows.length;
+    const progress = new ProgressWindowHelper(
+      getString("progress-classify-headline"),
+    )
+      .createLine({
+        text: getString("progress-items-processed", {
+          args: { current: 0, total },
+        }),
+        progress: 0,
+      })
+      .show(-1);
     try {
       const classifier = getClassifier();
+      let processed = 0;
       for (const group of chunk(this.rows, CHUNK_SIZE)) {
         previewRows(group, classifier);
+        processed += group.length;
+        progress.changeLine({
+          text: getString("progress-items-processed", {
+            args: { current: processed, total },
+          }),
+          progress: Math.round((processed / total) * 100),
+        });
         this.table?.treeInstance.invalidate();
         await new Promise((r) => this.win.setTimeout(r, 0));
       }
     } finally {
       actionButton.disabled = false;
+      progress.startCloseTimer(2000);
     }
   }
 
