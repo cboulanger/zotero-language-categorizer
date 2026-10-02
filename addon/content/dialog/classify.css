@@ -125,3 +125,17 @@ body {
   content: "✗";
   color: #c62828;
 }
+/*
+ * Zotero's own stylesheet gives any row with a `highlighted` class a colored
+ * background via `.virtualized-table .row.highlighted:not(.selected)` with
+ * !important (used elsewhere in Zotero for search-match highlighting). We
+ * reuse that same `highlighted` hook (toggled by makeRowRenderer from
+ * rowData().highlighted) to mark excluded rows instead, so the ID-scoped
+ * selector here (which outranks Zotero's class-only selector regardless of
+ * !important, since an ID beats any number of classes on specificity) must
+ * override that background and dim the text instead.
+ */
+#zotero-lang-cat-table .row.highlighted:not(.selected) {
+  background: transparent !important;
+  color: #999 !important;
+}

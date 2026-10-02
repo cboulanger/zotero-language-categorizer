@@ -15,6 +15,7 @@ export interface RowState {
   code: string | null;
   reliable: boolean | null;
   status: "pending" | "success" | "error";
+  excluded: boolean;
 }
 
 type CreatorLike = { lastName: string };
@@ -36,6 +37,7 @@ export function buildRows(
     code: null,
     reliable: null,
     status: "pending",
+    excluded: false,
   }));
 }
 
@@ -187,6 +189,13 @@ export class DialogController {
       ])
       .setProp("multiSelect", false)
       .setProp("onSelectionChange", () => {})
+      .setProp("onActivate", (_e: Event, indices: number[]) => {
+        for (const i of indices) {
+          const row = this.rows[i];
+          if (row) row.excluded = !row.excluded;
+        }
+        this.table?.treeInstance.invalidate();
+      })
       .setContainerId("zotero-lang-cat-table-container");
 
     // Opening the dialog performs the classification immediately (it's fast
@@ -207,12 +216,14 @@ export class DialogController {
         ? `${row.code} (?)`
         : row.code
       : "…";
+    const change = `${oldValue} → ${newValue}`;
     return {
       title: row.title,
       creators: row.creators,
-      change: `${oldValue} → ${newValue}`,
+      change: row.excluded ? `🚫 ${change}` : change,
       status:
         row.status === "success" ? "✓" : row.status === "error" ? "✗" : "",
+      highlighted: row.excluded ? "1" : "",
     };
   }
 
@@ -261,7 +272,7 @@ export class DialogController {
   }
 
   async runApply(): Promise<void> {
-    const toApply = this.rows.filter((r) => r.code);
+    const toApply = this.rows.filter((r) => r.code && !r.excluded);
     for (const group of chunk(toApply, CHUNK_SIZE)) {
       for (const row of group) {
         try {
