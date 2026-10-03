@@ -17,5 +17,6 @@ export type FluentMessageId =
   | 'dialog-skip-hint'
   | 'dialog-title'
   | 'menu-classify'
+  | 'progress-apply-headline'
   | 'progress-classify-headline'
   | 'progress-items-processed';

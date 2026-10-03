@@ -70,6 +70,39 @@ export function chunk<T>(items: T[], size: number): T[][] {
   return chunks;
 }
 
+async function runWithProgress<T>(
+  win: Window,
+  rows: T[],
+  headline: string,
+  work: (group: T[]) => void | Promise<void>,
+): Promise<void> {
+  const total = rows.length;
+  const progress = new ProgressWindowHelper(headline)
+    .createLine({
+      text: getString("progress-items-processed", {
+        args: { current: 0, total },
+      }),
+      progress: 0,
+    })
+    .show(-1);
+  try {
+    let processed = 0;
+    for (const group of chunk(rows, CHUNK_SIZE)) {
+      await work(group);
+      processed += group.length;
+      progress.changeLine({
+        text: getString("progress-items-processed", {
+          args: { current: processed, total },
+        }),
+        progress: Math.round((processed / total) * 100),
+      });
+      await new Promise((r) => win.setTimeout(r, 0));
+    }
+  } finally {
+    progress.startCloseTimer(2000);
+  }
+}
+
 type ApplyableItem = ScannableItem & {
   getCreators(): CreatorLike[];
   setField(field: string, value: string): void;
@@ -232,35 +265,19 @@ export class DialogController {
   }
 
   async classify(actionButton: HTMLButtonElement): Promise<void> {
-    const total = this.rows.length;
-    const progress = new ProgressWindowHelper(
-      getString("progress-classify-headline"),
-    )
-      .createLine({
-        text: getString("progress-items-processed", {
-          args: { current: 0, total },
-        }),
-        progress: 0,
-      })
-      .show(-1);
     try {
       const classifier = getClassifier();
-      let processed = 0;
-      for (const group of chunk(this.rows, CHUNK_SIZE)) {
-        previewRows(group, classifier);
-        processed += group.length;
-        progress.changeLine({
-          text: getString("progress-items-processed", {
-            args: { current: processed, total },
-          }),
-          progress: Math.round((processed / total) * 100),
-        });
-        this.table?.treeInstance.invalidate();
-        await new Promise((r) => this.win.setTimeout(r, 0));
-      }
+      await runWithProgress(
+        this.win,
+        this.rows,
+        getString("progress-classify-headline"),
+        (group) => {
+          previewRows(group, classifier);
+          this.table?.treeInstance.invalidate();
+        },
+      );
     } finally {
       actionButton.disabled = false;
-      progress.startCloseTimer(2000);
     }
   }
 
@@ -277,18 +294,22 @@ export class DialogController {
 
   async runApply(): Promise<void> {
     const toApply = this.rows.filter((r) => r.code && !r.excluded);
-    for (const group of chunk(toApply, CHUNK_SIZE)) {
-      for (const row of group) {
-        try {
-          (row.item as ApplyableItem).setField("language", row.code!);
-          await (row.item as ApplyableItem).saveTx();
-          row.status = "success";
-        } catch (e) {
-          row.status = "error";
+    await runWithProgress(
+      this.win,
+      toApply,
+      getString("progress-apply-headline"),
+      async (group) => {
+        for (const row of group) {
+          try {
+            (row.item as ApplyableItem).setField("language", row.code!);
+            await (row.item as ApplyableItem).saveTx();
+            row.status = "success";
+          } catch (e) {
+            row.status = "error";
+          }
+          this.table?.treeInstance.invalidate();
         }
-        this.table?.treeInstance.invalidate();
-      }
-      await new Promise((r) => this.win.setTimeout(r, 0));
-    }
+      },
+    );
   }
 }
