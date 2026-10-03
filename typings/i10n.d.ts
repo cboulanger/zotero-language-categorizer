@@ -5,10 +5,12 @@
 export type FluentMessageId =
   | 'dialog-apply'
   | 'dialog-cancel'
-  | 'dialog-column-change'
   | 'dialog-column-creators'
+  | 'dialog-column-current'
+  | 'dialog-column-predicted'
   | 'dialog-column-title'
   | 'dialog-done'
+  | 'dialog-edit-hint'
   | 'dialog-empty-state'
   | 'dialog-explanation'
   | 'dialog-heading'
@@ -16,9 +18,11 @@ export type FluentMessageId =
   | 'dialog-iso-link-text'
   | 'dialog-opt-convert'
   | 'dialog-opt-overwrite'
+  | 'dialog-scanning'
   | 'dialog-skip-hint'
   | 'dialog-title'
-  | 'dialog-unchanged'
   | 'menu-classify'
+  | 'progress-apply-headline'
   | 'progress-classify-headline'
-  | 'progress-items-processed';
+  | 'progress-items-processed'
+  | 'progress-scan-headline';
