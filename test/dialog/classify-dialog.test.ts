@@ -178,6 +178,24 @@ describe("classify-dialog", function () {
       expect(rows[0].code).to.equal("en");
       expect(rows[0].excluded).to.be.true;
     });
+
+    it("normalizes a region-tagged code to its primary subtag", function () {
+      const rows = buildRows([makeItem("Title")]);
+      const ok = commitCodeEdit(rows[0], "en-US");
+      expect(ok).to.be.true;
+      expect(rows[0].code).to.equal("en");
+      expect(rows[0].reliable).to.be.true;
+    });
+
+    it("rejects whitespace-only input", function () {
+      const rows = buildRows([makeItem("Title")]);
+      rows[0].code = "en";
+      rows[0].excluded = true;
+      const ok = commitCodeEdit(rows[0], "   ");
+      expect(ok).to.be.false;
+      expect(rows[0].code).to.equal("en");
+      expect(rows[0].excluded).to.be.true;
+    });
   });
 
   describe("DialogController row exclusion", function () {

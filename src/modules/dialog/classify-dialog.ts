@@ -67,8 +67,9 @@ export function previewRows(
 export function commitCodeEdit(row: RowState, rawValue: string): boolean {
   const value = rawValue.trim().toLowerCase();
   if (!isIso6391Code(value)) return false;
-  row.code = value;
+  row.code = value.split(/[-_]/)[0];
   row.excluded = false;
+  row.reliable = true;
   return true;
 }
 
