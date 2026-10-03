@@ -298,6 +298,10 @@ export class DialogController {
     const input = this.win.document.createElement("input");
     input.className = "zotero-lang-cat-code-editor";
     input.value = row.code ?? "";
+    // Known limitation: the editor doesn't reposition or close on table
+    // scroll or window resize, so it can visually drift from its cell if
+    // the user scrolls/resizes mid-edit. Not handled — out of scope for
+    // this task.
     Object.assign(input.style, {
       position: "fixed",
       left: `${rect.left}px`,
@@ -306,16 +310,15 @@ export class DialogController {
       height: `${rect.height}px`,
     });
 
-    // `remove()`-ing a focused element synchronously fires a native `blur`
-    // on it, which would re-enter `commit` through the listener below even
-    // though the node is already detached. `closing` makes both paths that
-    // remove the input (successful commit, and Escape) idempotent against
-    // that re-entrant blur.
-    let closing = false;
     const commit = () => {
-      if (closing) return;
+      // `remove()`-ing a focused element synchronously fires a native
+      // `blur` on it, which would re-enter `commit` through the listener
+      // below even though the node is already detached. Guarding on
+      // reference equality to `this.activeEditor` (cleared by
+      // `closeCodeEdit` before the node is removed) makes this a no-op on
+      // that re-entrant call.
+      if (this.activeEditor !== input) return;
       if (commitCodeEdit(row, input.value)) {
-        closing = true;
         this.closeCodeEdit();
         this.table?.treeInstance.invalidate();
       } else {
@@ -328,10 +331,7 @@ export class DialogController {
       // KeyboardEvent, so `.key` needs a cast.
       const key = (ev as KeyboardEvent).key;
       if (key === "Enter") commit();
-      if (key === "Escape") {
-        closing = true;
-        this.closeCodeEdit();
-      }
+      if (key === "Escape") this.closeCodeEdit();
     });
 
     this.win.document.body!.appendChild(input);
@@ -341,8 +341,9 @@ export class DialogController {
   }
 
   private closeCodeEdit(): void {
-    this.activeEditor?.remove();
+    const editor = this.activeEditor;
     this.activeEditor = undefined;
+    editor?.remove();
   }
 
   rowData(i: number): Record<string, string> {
