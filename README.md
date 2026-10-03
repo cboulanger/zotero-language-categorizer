@@ -23,7 +23,7 @@ review and apply the detected codes in one batch.
   checkboxes in the dialog's footer relax this:
   - **Overwrite existing data** — also replaces non-empty values with the
     detected code.
-  - **Convert other codes** (only available with overwrite on) — instead of
+  - **Convert other codes** — instead of
     re-detecting, turns legacy values into their ISO 639-1 code: three-letter
     ISO 639-2/639-3 codes (`deu`, `ger`, `fra`) and spelled-out language
     names (`German`). Values that can't be mapped fall back to detection.
