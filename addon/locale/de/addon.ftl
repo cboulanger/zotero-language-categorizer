@@ -3,8 +3,8 @@ menu-classify =
 
 dialog-title = Sprachen der Einträge klassifizieren
 dialog-heading = Sprachen der Einträge klassifizieren
-dialog-explanation = Erkennt die Sprache von Titel und Abstract jedes Eintrags und trägt den entsprechenden ISO-639-1-Code in das Feld „Sprache“ ein – das Format, das Zoteros Zitierstil-Prozessor erwartet. Einträge mit vorhandenem Sprachwert bleiben unverändert, außer „Vorhandene Daten überschreiben“ ist aktiviert; „Andere Codes umwandeln“ wandelt dann Werte wie deu oder Deutsch in den ISO-639-1-Code um, statt die Sprache neu zu erkennen.
-dialog-skip-hint = Durch Doppelklick auf einen Eintrag wird dieser übersprungen – falsch klassifizierte Einträge werden beim Anwenden nicht geändert.
+dialog-explanation = Erkennt die Sprache von Titel und Abstract jedes Eintrags und trägt den entsprechenden ISO-639-1-Code in das Feld „Sprache“ ein – das Format, das Zoteros Zitierstil-Prozessor erwartet. Einträge mit vorhandenem Sprachwert bleiben standardmäßig unverändert. „Andere Codes umwandeln“ normalisiert Werte wie deu oder Deutsch in den ISO-639-1-Code; „Vorhandene Daten überschreiben“ ersetzt darüber hinaus jeden anderen vorhandenen Wert – auch bereits gültige Codes – durch die erkannte Sprache.
+dialog-skip-hint = Durch Doppelklick auf einen Eintrag wird dieser übersprungen.
 dialog-iso-link-text = Was ist ISO 639-1?
 dialog-iso-link-href = https://de.wikipedia.org/wiki/ISO_639-1
 dialog-empty-state = In der aktuellen Ansicht wurden keine Einträge gefunden.

@@ -3,8 +3,8 @@ menu-classify =
 
 dialog-title = Classify Item Languages
 dialog-heading = Classify Item Languages
-dialog-explanation = Detects the language of each item's title and abstract and writes the corresponding ISO 639-1 code into the language field — the format Zotero's citation style processor expects. Items that already have a language value are left untouched unless you tick “Overwrite existing data”; “Convert other codes” then turns values like deu or German into their ISO 639-1 code instead of re-detecting them.
-dialog-skip-hint = Double-click a row to skip it — incorrectly classified items won't be changed when you apply.
+dialog-explanation = Detects the language of each item's title and abstract and writes the corresponding ISO 639-1 code into the language field — the format Zotero's citation style processor expects. Items that already have a language value are left untouched by default. Tick “Convert other codes” to normalize values like deu or German into their ISO 639-1 code; tick “Overwrite existing data” to replace any other existing value — including already-valid codes — with the detected language.
+dialog-skip-hint = Double-click a row to skip it.
 dialog-iso-link-text = What is ISO 639-1?
 dialog-iso-link-href = https://en.wikipedia.org/wiki/ISO_639-1
 dialog-empty-state = No items found in the current view.

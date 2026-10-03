@@ -51,6 +51,16 @@ _overwrite_ is on; convert wins over overwrite for mappable values (a
 conversion is lossless, detection isn't). Skipped rows are shown greyed with
 "unchanged" in the Change column and are never written.
 
+**Amendment (2026-10-03, later same day):** the row marked `on`/`–` for
+convert above (mappable value, convert on) now applies **regardless of
+`overwrite`**, including when overwrite is off — previously convert had no
+effect unless overwrite was also on. This covers the use case of normalizing
+legacy codes (`deu` → `de`) without also re-detecting and replacing
+already-valid codes (`fr`, `en-US`) or unmappable junk (`xyz`), which still
+require `overwrite`. The "convert wins over overwrite" priority for mappable
+values is unchanged. See "Checkbox dependency" below for the corresponding
+UI change.
+
 `overwrite` off therefore changes current behaviour for non-empty,
 non-639-1, non-mappable values (previously overwritten, now left alone). This
 is intentional and noted in the changelog.
@@ -97,10 +107,12 @@ The Apply button is enabled only when all of the following hold:
 (The request says "enabled if all the right is enabled" — I read this as
 "all conditions are met". Please correct if something else was meant.)
 
-**Checkbox dependency (decided):** "Convert other codes" is only enabled
-while "Overwrite existing data" is checked, since converting changes existing
-data. Unchecking overwrite also unchecks and disables convert. Consequently,
-unless overwrite is on, no existing data is ever touched (decided).
+**Checkbox dependency (superseded 2026-10-03):** originally "Convert other
+codes" was only enabled while "Overwrite existing data" was checked.
+Decoupled per the amendment above: both checkboxes are independent, plain
+toggles with no enable/disable relationship. "Convert" alone now touches
+mappable values only; "overwrite" alone (still) touches everything else;
+unmappable and already-valid values still require "overwrite" to change.
 
 After applying, both checkboxes and Cancel are disabled (as Cancel is today).
 

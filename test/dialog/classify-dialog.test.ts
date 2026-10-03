@@ -195,10 +195,18 @@ describe("classify-dialog", function () {
       expect(b.code).to.equal("en");
     });
 
-    it("never converts without overwrite", function () {
+    it("converts mappable values even when overwrite is off", function () {
       const r = row("deu");
       resolveRow(r, opt(false, true));
-      expect(r.code).to.be.null;
+      expect(r.code).to.equal("de");
+    });
+
+    it("convert alone leaves valid and unmappable values untouched", function () {
+      for (const lang of ["fr", "xyz"]) {
+        const r = row(lang);
+        resolveRow(r, opt(false, true));
+        expect(r.code, lang).to.be.null;
+      }
     });
   });
 });

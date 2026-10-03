@@ -55,20 +55,26 @@ export interface RowOptions {
 export const DEFAULT_OPTIONS: RowOptions = { overwrite: false, convert: false };
 
 // Decides what (if anything) a row changes to, from its current language
-// value, the cached detection and the footer options. Existing data is only
-// touched when `overwrite` is on; `convert` (which requires overwrite) maps
-// legacy codes/names to ISO 639-1 instead of re-detecting them.
+// value, the cached detection and the footer options. `convert` maps
+// mappable legacy codes/names to ISO 639-1 independently of `overwrite`;
+// `overwrite` otherwise governs whether any other existing value is
+// replaced by the detection. When both apply to the same (mappable) value,
+// convert wins — it's deterministic, detection on a short title isn't.
 export function resolveRow(row: RowState, options: RowOptions): void {
   const current = row.currentLanguage.trim();
   let result: { code: string; reliable: boolean | null } | null = null;
   if (!current) {
     result = row.detected;
-  } else if (options.overwrite) {
+  } else {
     const converted =
       options.convert && !isIso6391Code(current)
         ? convertLanguageValue(current, ["en", Zotero.locale])
         : null;
-    result = converted ? { code: converted, reliable: true } : row.detected;
+    if (converted) {
+      result = { code: converted, reliable: true };
+    } else if (options.overwrite) {
+      result = row.detected;
+    }
   }
   row.code = result?.code ?? null;
   row.reliable = result?.reliable ?? null;
@@ -198,12 +204,7 @@ export class DialogController {
       getString("dialog-opt-convert");
     overwriteBox.checked = false;
     convertBox.checked = false;
-    convertBox.disabled = true;
-    overwriteBox.addEventListener("change", () => {
-      if (!overwriteBox.checked) convertBox.checked = false;
-      convertBox.disabled = !overwriteBox.checked;
-      this.onOptionsChange();
-    });
+    overwriteBox.addEventListener("change", () => this.onOptionsChange());
     convertBox.addEventListener("change", () => this.onOptionsChange());
 
     const isoLinkHref = getString("dialog-iso-link-href");
