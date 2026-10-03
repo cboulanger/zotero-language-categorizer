@@ -3,7 +3,7 @@ menu-classify =
 
 dialog-title = Clasificar el idioma de los elementos
 dialog-heading = Clasificar el idioma de los elementos
-dialog-explanation = Detecta el idioma del título y el resumen de cada elemento y escribe el código ISO 639-1 correspondiente en el campo de idioma — el formato que espera el procesador de estilos de citas de Zotero. Los elementos que ya tienen un código válido no se modifican.
+dialog-explanation = Detecta el idioma del título y el resumen de cada elemento y escribe el código ISO 639-1 correspondiente en el campo de idioma — el formato que espera el procesador de estilos de citas de Zotero. Los elementos que ya tienen un valor de idioma no se modifican, salvo que marques «Sobrescribir los datos existentes»; «Convertir otros códigos» convierte entonces valores como deu o alemán a su código ISO 639-1 en lugar de volver a detectarlo.
 dialog-skip-hint = Haz doble clic en una fila para omitirla — los elementos clasificados incorrectamente no se modificarán al aplicar.
 dialog-iso-link-text = ¿Qué es ISO 639-1?
 dialog-iso-link-href = https://es.wikipedia.org/wiki/ISO_639-1
