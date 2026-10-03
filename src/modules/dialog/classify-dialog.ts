@@ -306,8 +306,16 @@ export class DialogController {
       height: `${rect.height}px`,
     });
 
+    // `remove()`-ing a focused element synchronously fires a native `blur`
+    // on it, which would re-enter `commit` through the listener below even
+    // though the node is already detached. `closing` makes both paths that
+    // remove the input (successful commit, and Escape) idempotent against
+    // that re-entrant blur.
+    let closing = false;
     const commit = () => {
+      if (closing) return;
       if (commitCodeEdit(row, input.value)) {
+        closing = true;
         this.closeCodeEdit();
         this.table?.treeInstance.invalidate();
       } else {
@@ -320,7 +328,10 @@ export class DialogController {
       // KeyboardEvent, so `.key` needs a cast.
       const key = (ev as KeyboardEvent).key;
       if (key === "Enter") commit();
-      if (key === "Escape") this.closeCodeEdit();
+      if (key === "Escape") {
+        closing = true;
+        this.closeCodeEdit();
+      }
     });
 
     this.win.document.body!.appendChild(input);
