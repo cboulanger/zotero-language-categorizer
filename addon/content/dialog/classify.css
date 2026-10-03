@@ -42,15 +42,12 @@ body {
 #zotero-lang-cat-skip-hint {
   margin-top: 4px;
 }
-.zotero-lang-cat-link {
-  display: inline-block;
-  margin-top: 4px;
-  font-size: 12px;
+.zotero-lang-cat-iso-link {
   color: #2563eb;
   text-decoration: none;
   cursor: pointer;
 }
-.zotero-lang-cat-link:hover {
+.zotero-lang-cat-iso-link:hover {
   text-decoration: underline;
 }
 .zotero-lang-cat-body {
@@ -86,6 +83,17 @@ body {
   gap: 10px;
   padding: 14px 20px;
   border-top: 1px solid #e5e5e5;
+}
+.zotero-lang-cat-options {
+  display: flex;
+  gap: 16px;
+  margin-inline-end: auto;
+  font-size: 13px;
+}
+.zotero-lang-cat-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 .zotero-lang-cat-btn {
   appearance: none;

@@ -44,17 +44,14 @@ href="chrome://zotero-platform/content/zotero.css" type="text/css"?>
         <h1 id="zotero-lang-cat-heading">Classify Item Languages</h1>
         <p id="zotero-lang-cat-explanation">
           Detects the language of each item's title and abstract and fills in
-          the language field. Items that already have a valid language code are
-          left untouched.
+          the language field. Items that already have a language value are left
+          untouched unless you tick “Overwrite existing data”.
         </p>
         <p id="zotero-lang-cat-skip-hint">
           Double-click a row to skip it — incorrectly classified items won't be
           changed when you apply.
         </p>
         <p id="zotero-lang-cat-edit-hint"></p>
-        <a id="zotero-lang-cat-iso-link" class="zotero-lang-cat-link" href="#"
-          >What is ISO 639-1?</a
-        >
       </header>
       <div class="zotero-lang-cat-body">
         <p id="zotero-lang-cat-empty-state" hidden="hidden">
@@ -63,6 +60,20 @@ href="chrome://zotero-platform/content/zotero.css" type="text/css"?>
         <div id="zotero-lang-cat-table-container"></div>
       </div>
       <footer class="zotero-lang-cat-button-row">
+        <div class="zotero-lang-cat-options">
+          <label>
+            <input type="checkbox" id="zotero-lang-cat-opt-overwrite" />
+            <span id="zotero-lang-cat-opt-overwrite-label"
+              >Overwrite existing data</span
+            >
+          </label>
+          <label>
+            <input type="checkbox" id="zotero-lang-cat-opt-convert" />
+            <span id="zotero-lang-cat-opt-convert-label"
+              >Convert other codes</span
+            >
+          </label>
+        </div>
         <button
           id="zotero-lang-cat-cancel"
           class="zotero-lang-cat-btn zotero-lang-cat-btn-secondary"

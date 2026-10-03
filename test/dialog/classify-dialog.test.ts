@@ -2,6 +2,7 @@ import { expect } from "chai";
 import {
   buildRows,
   previewRows,
+  resolveRow,
   formatCreators,
   commitCodeEdit,
   DialogController,
@@ -215,6 +216,20 @@ describe("classify-dialog", function () {
       expect(data.predicted.startsWith("🚫 ")).to.be.true;
     });
 
+    it("rowData() doesn't highlight a pending (not-yet-classified) row with no code", function () {
+      const rows = buildRows([makeItem("Title")]);
+      const controller = new DialogController(fakeWin, rows);
+      expect(controller.classified).to.be.false;
+      expect(controller.rowData(0).highlighted).to.equal("");
+    });
+
+    it("rowData() highlights a classified row with no pending change", function () {
+      const rows = buildRows([makeItem("Title")]);
+      const controller = new DialogController(fakeWin, rows);
+      controller.classified = true;
+      expect(controller.rowData(0).highlighted).to.equal("1");
+    });
+
     it("runApply() skips excluded rows even when they have a code", async function () {
       const item = makeItem("Title") as unknown as Parameters<
         typeof buildRows
@@ -234,6 +249,69 @@ describe("classify-dialog", function () {
       await controller.runApply();
       expect(saved).to.be.false;
       expect(rows[0].status).to.equal("pending");
+    });
+  });
+
+  describe("resolveRow", function () {
+    function row(language: string) {
+      const r = buildRows([makeItem("Hello World", "", language)])[0];
+      r.detected = { code: "en", reliable: true };
+      return r;
+    }
+    const opt = (overwrite: boolean, convert = false) => ({
+      overwrite,
+      convert,
+    });
+
+    it("fills an empty field regardless of options", function () {
+      const r = row("");
+      resolveRow(r, opt(false));
+      expect(r.code).to.equal("en");
+    });
+
+    it("leaves existing values untouched unless overwrite is on", function () {
+      for (const lang of ["fr", "deu", "xyz"]) {
+        const r = row(lang);
+        resolveRow(r, opt(false));
+        expect(r.code, lang).to.be.null;
+      }
+    });
+
+    it("overwrites existing values with the detection when overwrite is on", function () {
+      for (const lang of ["fr", "deu", "xyz"]) {
+        const r = row(lang);
+        resolveRow(r, opt(true));
+        expect(r.code, lang).to.equal("en");
+      }
+    });
+
+    it("converts mappable values when overwrite and convert are on", function () {
+      const r = row("deu");
+      resolveRow(r, opt(true, true));
+      expect(r.code).to.equal("de");
+    });
+
+    it("falls back to detection for unmappable values and keeps valid codes detected", function () {
+      const a = row("xyz");
+      resolveRow(a, opt(true, true));
+      expect(a.code).to.equal("en");
+      const b = row("fr");
+      resolveRow(b, opt(true, true));
+      expect(b.code).to.equal("en");
+    });
+
+    it("converts mappable values even when overwrite is off", function () {
+      const r = row("deu");
+      resolveRow(r, opt(false, true));
+      expect(r.code).to.equal("de");
+    });
+
+    it("convert alone leaves valid and unmappable values untouched", function () {
+      for (const lang of ["fr", "xyz"]) {
+        const r = row(lang);
+        resolveRow(r, opt(false, true));
+        expect(r.code, lang).to.be.null;
+      }
     });
   });
 });

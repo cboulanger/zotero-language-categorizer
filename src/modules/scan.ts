@@ -1,4 +1,3 @@
-import { isIso6391Code } from "./iso639-1";
 import { getString } from "../utils/locale";
 import { createProgressWindow, runChunked } from "./progress";
 
@@ -11,8 +10,6 @@ export interface ScannableItem {
 export function isEligible(item: ScannableItem): boolean {
   if (!item.isRegularItem()) return false;
   if (!item.library.editable) return false;
-  const language = item.getField("language") || "";
-  if (language.trim() && isIso6391Code(language)) return false;
   const title = item.getField("title") || "";
   const abstractNote = item.getField("abstractNote") || "";
   return Boolean(title.trim() || abstractNote.trim());

@@ -6,16 +6,23 @@ import { runWithProgress } from "../progress";
 import { filterEligibleItems } from "../scan";
 import type { LanguageClassifier } from "../classifiers/types";
 import type { ScannableItem } from "../scan";
+import { convertLanguageValue } from "../iso639-convert";
 
 export interface RowState {
   item: ScannableItem;
   title: string;
   creators: string;
   currentLanguage: string;
+  // Classifier result, cached so toggling options needn't re-classify.
+  detected: { code: string; reliable: boolean } | null;
+  // Resulting change under the current options; null = row left untouched.
   code: string | null;
   reliable: boolean | null;
   status: "pending" | "success" | "error";
   excluded: boolean;
+  // Set once the user commits a manual code edit; pins the row so toggling
+  // overwrite/convert afterwards never recomputes over it.
+  manuallyEdited: boolean;
 }
 
 type CreatorLike = { lastName: string };
@@ -34,42 +41,78 @@ export function buildRows(
     title: item.getField("title") || "(no title)",
     creators: formatCreators(item.getCreators()),
     currentLanguage: item.getField("language") || "",
+    detected: null,
     code: null,
     reliable: null,
     status: "pending",
     excluded: false,
+    manuallyEdited: false,
   }));
+}
+
+export interface RowOptions {
+  overwrite: boolean;
+  convert: boolean;
+}
+
+export const DEFAULT_OPTIONS: RowOptions = { overwrite: false, convert: false };
+
+// Decides what (if anything) a row changes to, from its current language
+// value, the cached detection and the footer options. `convert` maps
+// mappable legacy codes/names to ISO 639-1 independently of `overwrite`;
+// `overwrite` otherwise governs whether any other existing value is
+// replaced by the detection. When both apply to the same (mappable) value,
+// convert wins — it's deterministic, detection on a short title isn't.
+export function resolveRow(row: RowState, options: RowOptions): void {
+  const current = row.currentLanguage.trim();
+  let result: { code: string; reliable: boolean | null } | null = null;
+  if (!current) {
+    result = row.detected;
+  } else {
+    const converted =
+      options.convert && !isIso6391Code(current)
+        ? convertLanguageValue(current, ["en", Zotero.locale])
+        : null;
+    if (converted) {
+      result = { code: converted, reliable: true };
+    } else if (options.overwrite) {
+      result = row.detected;
+    }
+  }
+  row.code = result?.code ?? null;
+  row.reliable = result?.reliable ?? null;
 }
 
 export function previewRows(
   rows: RowState[],
   classifier: LanguageClassifier,
+  options: RowOptions = DEFAULT_OPTIONS,
 ): void {
   for (const row of rows) {
     try {
       const title = row.item.getField("title") || "";
       const abstractNote = row.item.getField("abstractNote") || "";
       const text = [title, abstractNote].filter(Boolean).join("\n");
-      const result = classifier.classify(text);
-      row.code = result?.code ?? null;
-      row.reliable = result?.reliable ?? null;
-      if (row.reliable === false) row.excluded = true;
+      row.detected = classifier.classify(text);
     } catch (e) {
-      row.code = null;
-      row.reliable = null;
+      row.detected = null;
     }
+    resolveRow(row, options);
+    if (row.reliable === false) row.excluded = true;
   }
 }
 
 // Commits a manually-typed predicted code. Editing counts as confirming the
 // row (same as the double-click toggle), since a user-supplied value is no
-// longer a low-confidence guess.
+// longer a low-confidence guess. `manuallyEdited` pins the row so toggling
+// overwrite/convert afterwards never recomputes over it.
 export function commitCodeEdit(row: RowState, rawValue: string): boolean {
   const value = rawValue.trim().toLowerCase();
   if (!isIso6391Code(value)) return false;
   row.code = value.split(/[-_]/)[0];
   row.excluded = false;
   row.reliable = true;
+  row.manuallyEdited = true;
   return true;
 }
 
@@ -108,9 +151,14 @@ export class DialogController {
   table?: VirtualizedTableHelper;
   rows: RowState[];
   applied = false;
+  options: RowOptions = { ...DEFAULT_OPTIONS };
+  classified = false;
   private cancelled = false;
   private busy = false;
   private cancelButton?: HTMLButtonElement;
+  private actionButton?: HTMLButtonElement;
+  private overwriteBox?: HTMLInputElement;
+  private convertBox?: HTMLInputElement;
   private emptyState?: HTMLElement;
   private tableContainer?: HTMLElement;
   private activeEditor?: HTMLInputElement;
@@ -149,28 +197,34 @@ export class DialogController {
     const cancelButton = doc.getElementById(
       "zotero-lang-cat-cancel",
     ) as HTMLButtonElement;
-    const isoLink = doc.getElementById(
-      "zotero-lang-cat-iso-link",
-    ) as HTMLAnchorElement;
+    const overwriteBox = doc.getElementById(
+      "zotero-lang-cat-opt-overwrite",
+    ) as HTMLInputElement;
+    const convertBox = doc.getElementById(
+      "zotero-lang-cat-opt-convert",
+    ) as HTMLInputElement;
     this.cancelButton = cancelButton;
+    this.actionButton = actionButton;
+    this.overwriteBox = overwriteBox;
+    this.convertBox = convertBox;
     this.emptyState = emptyState;
     this.tableContainer = tableContainer;
 
     doc.title = getString("dialog-title");
     heading.textContent = getString("dialog-heading");
-    explanation.textContent = getString("dialog-explanation");
+    this.renderExplanation(explanation);
     skipHint.textContent = getString("dialog-skip-hint");
     editHint.textContent = getString("dialog-edit-hint");
     cancelButton.textContent = getString("dialog-cancel");
     actionButton.textContent = getString("dialog-apply");
-
-    const isoLinkHref = getString("dialog-iso-link-href");
-    isoLink.textContent = getString("dialog-iso-link-text");
-    isoLink.href = isoLinkHref;
-    isoLink.addEventListener("click", (e) => {
-      e.preventDefault();
-      Zotero.launchURL(isoLinkHref);
-    });
+    doc.getElementById("zotero-lang-cat-opt-overwrite-label")!.textContent =
+      getString("dialog-opt-overwrite");
+    doc.getElementById("zotero-lang-cat-opt-convert-label")!.textContent =
+      getString("dialog-opt-convert");
+    overwriteBox.checked = false;
+    convertBox.checked = false;
+    overwriteBox.addEventListener("change", () => this.onOptionsChange());
+    convertBox.addEventListener("change", () => this.onOptionsChange());
 
     // Cancel is live through every phase (scanning, classifying, applying):
     // it flags cancellation for whichever chunked loop is running, which
@@ -198,6 +252,33 @@ export class DialogController {
     void this.scanAndClassify(actionButton);
   }
 
+  // Links the "ISO 639-1" mention inside dialog-explanation itself instead
+  // of a separate "What is ISO 639-1?" line below it, to save vertical
+  // space. Falls back to plain text if a translation ever drops the term.
+  private renderExplanation(explanation: HTMLElement): void {
+    const text = getString("dialog-explanation");
+    const match = text.match(/ISO[ -]639-1/);
+    explanation.textContent = "";
+    if (!match) {
+      explanation.textContent = text;
+      return;
+    }
+    const href = getString("dialog-iso-link-href");
+    const link = this.win.document.createElement("a");
+    link.className = "zotero-lang-cat-iso-link";
+    link.href = href;
+    link.textContent = match[0];
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      Zotero.launchURL(href);
+    });
+    explanation.append(
+      text.slice(0, match.index),
+      link,
+      text.slice(match.index! + match[0].length),
+    );
+  }
+
   private async scanAndClassify(
     actionButton: HTMLButtonElement,
   ): Promise<void> {
@@ -216,6 +297,8 @@ export class DialogController {
       if (this.rows.length === 0) {
         emptyState.textContent = getString("dialog-empty-state");
         actionButton.disabled = true;
+        this.overwriteBox!.disabled = true;
+        this.convertBox!.disabled = true;
         return;
       }
 
@@ -226,7 +309,7 @@ export class DialogController {
       // onfulfilled callback fires, so classify() (which invalidates the
       // tree) must not start until then.
       table.render(undefined, () => {
-        void this.classify(actionButton);
+        void this.classify();
       });
     } finally {
       this.busy = false;
@@ -278,6 +361,7 @@ export class DialogController {
           if (r) r.excluded = !r.excluded;
         }
         this.table?.treeInstance.invalidate();
+        this.updateActionState();
       })
       .setContainerId("zotero-lang-cat-table-container");
     return this.table;
@@ -321,6 +405,7 @@ export class DialogController {
       if (commitCodeEdit(row, input.value)) {
         this.closeCodeEdit();
         this.table?.treeInstance.invalidate();
+        this.updateActionState();
       } else {
         input.classList.add("invalid");
       }
@@ -370,11 +455,11 @@ export class DialogController {
       predicted: row.excluded ? `🚫 ${predicted}` : predicted,
       status:
         row.status === "success" ? "✓" : row.status === "error" ? "✗" : "",
-      highlighted: row.excluded ? "1" : "",
+      highlighted: row.excluded || (this.classified && !row.code) ? "1" : "",
     };
   }
 
-  async classify(actionButton: HTMLButtonElement): Promise<void> {
+  async classify(): Promise<void> {
     this.busy = true;
     try {
       const classifier = getClassifier();
@@ -383,19 +468,50 @@ export class DialogController {
         this.rows,
         getString("progress-classify-headline"),
         (group) => {
-          previewRows(group, classifier);
+          previewRows(group, classifier, this.options);
           this.table?.treeInstance.invalidate();
         },
         () => this.cancelled,
       );
     } finally {
       this.busy = false;
+      this.classified = true;
       if (this.cancelled) {
         this.win.close();
       } else {
-        actionButton.disabled = false;
+        // Rows with no pending change only start showing as dimmed once
+        // `classified` flips true, which happens after the last chunk's
+        // own invalidate() — so the table needs one more to pick it up.
+        this.table?.treeInstance.invalidate();
+        this.updateActionState();
       }
     }
+  }
+
+  onOptionsChange(): void {
+    this.options = {
+      overwrite: Boolean(this.overwriteBox?.checked),
+      convert: Boolean(this.convertBox?.checked),
+    };
+    for (const row of this.rows) {
+      // Pinned: a manually-edited row is never recomputed by the checkboxes.
+      if (row.manuallyEdited) continue;
+      const hadCode = row.code !== null;
+      resolveRow(row, this.options);
+      // Only auto-exclude the first time a row gets a real (low-confidence)
+      // code under the current options — this must not re-exclude a row
+      // the user already confirmed via double-click.
+      if (!hadCode && row.reliable === false) row.excluded = true;
+    }
+    this.table?.treeInstance.invalidate();
+    this.updateActionState();
+  }
+
+  // Apply needs finished classification and at least one pending change.
+  updateActionState(): void {
+    if (!this.actionButton || this.applied) return;
+    this.actionButton.disabled =
+      !this.classified || !this.rows.some((r) => r.code && !r.excluded);
   }
 
   async onApplyClick(button: HTMLButtonElement): Promise<void> {
@@ -408,6 +524,8 @@ export class DialogController {
     // Cancel is redundant once changes are applied — there's nothing left
     // to cancel, and "Done" now closes the dialog on its own.
     if (this.cancelButton) this.cancelButton.disabled = true;
+    if (this.overwriteBox) this.overwriteBox.disabled = true;
+    if (this.convertBox) this.convertBox.disabled = true;
   }
 
   async runApply(): Promise<void> {
