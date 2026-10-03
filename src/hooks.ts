@@ -1,6 +1,6 @@
 import { initLocale } from "./utils/locale";
 import { createZToolkit } from "./utils/ztoolkit";
-import { getScopedEligibleItems } from "./modules/scan";
+import { getScopedItems } from "./modules/scan";
 import {
   openClassifyDialog,
   DIALOG_WINDOW_TYPE,
@@ -24,8 +24,9 @@ async function onStartup() {
         menuType: "menuitem",
         l10nID: "zotero-lang-cat-menu-classify",
         onCommand: () => {
-          const items = getScopedEligibleItems();
-          openClassifyDialog(items);
+          // Captured here, before the dialog window opens and takes focus
+          // — see getScopedItems's doc comment for why.
+          openClassifyDialog(getScopedItems());
         },
       },
     ],

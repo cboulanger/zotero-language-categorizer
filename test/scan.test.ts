@@ -43,12 +43,12 @@ describe("scan", function () {
       expect(isEligible(makeItem({ editable: false }))).to.be.false;
     });
 
-    it("rejects an item that already has a valid ISO 639-1 code", function () {
-      expect(isEligible(makeItem({ language: "fr" }))).to.be.false;
+    it("accepts an item that already has a valid ISO 639-1 code", function () {
+      expect(isEligible(makeItem({ language: "fr" }))).to.be.true;
     });
 
-    it("rejects an item whose code has a region subtag", function () {
-      expect(isEligible(makeItem({ language: "en-US" }))).to.be.false;
+    it("accepts an item whose code has a region subtag", function () {
+      expect(isEligible(makeItem({ language: "en-US" }))).to.be.true;
     });
 
     it("accepts an item whose language field is a spelled-out name, not a code", function () {
@@ -79,7 +79,7 @@ describe("scan", function () {
         makeItem({ language: "en" }),
         makeItem({ isRegular: false }),
       ];
-      expect(getEligibleItems(items)).to.deep.equal([items[0]]);
+      expect(getEligibleItems(items)).to.deep.equal([items[0], items[1]]);
     });
   });
 });

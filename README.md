@@ -18,9 +18,15 @@ name like "German" instead of a code like `de`. This plugin finds those
 items, runs the title/abstract through a language detector, and lets you
 review and apply the detected codes in one batch.
 
-- Only items whose Language field is **empty or not already a valid
-  ISO 639-1 code** are touched. An item already correctly tagged `fr` is left
-  alone; one tagged "French" is corrected to `fr`.
+- By default only items with an **empty** Language field are changed;
+  anything already filled in — `fr`, "French", `deu` — is left alone. Two
+  checkboxes in the dialog's footer relax this:
+  - **Overwrite existing data** — also replaces non-empty values with the
+    detected code.
+  - **Convert other codes** (only available with overwrite on) — instead of
+    re-detecting, turns legacy values into their ISO 639-1 code: three-letter
+    ISO 639-2/639-3 codes (`deu`, `ger`, `fra`) and spelled-out language
+    names (`German`). Values that can't be mapped fall back to detection.
 - Nothing is written until you click **Apply** — the dialog shows every
   change (`old value → new value`) before you commit to it.
 - Works on whatever you currently have selected in Zotero's left pane: a
@@ -44,7 +50,10 @@ other Zotero plugin does.
 1. Select a collection, saved search, or "My Library" in Zotero's left pane.
 2. **Tools → Classify Item Languages…**
 3. The dialog opens and immediately classifies every eligible item in that
-   view. Each row shows the item's creator(s), title, and the proposed
+   view. Optionally tick **Overwrite existing data** and/or **Convert other
+   codes**; the table and the Apply button update instantly. Rows that won't
+   change are greyed out and marked "unchanged", and Apply stays disabled
+   until at least one row will change. Each row shows the item's creator(s), title, and the proposed
    change (e.g. `German → de`); a `(?)` after a code means the detector
    wasn't fully confident, but still shows its best guess.
 4. Click **Apply**. A green checkmark appears next to each item as its
@@ -89,16 +98,24 @@ preference letting users pick a classifier.
 
 - `src/modules/scan.ts` — eligibility filter. `isEligible()` is a pure
   function (unit-testable without Zotero) checking: regular item, editable
-  library, non-empty title/abstract, and a Language field that's empty or
-  not a recognized ISO 639-1 code (`src/modules/iso639-1.ts`, matched against
-  the standard 184-code set, case-insensitively, ignoring any region/script
-  subtag). `getScopedEligibleItems()` is the thin live-Zotero wrapper that
-  pulls from `ZoteroPane.getSortedItems()`.
+  library, and non-empty title/abstract. The existing Language value is
+  deliberately _not_ filtered here — whether it may be changed depends on the
+  dialog's footer options. `getScopedEligibleItems()` is the thin
+  live-Zotero wrapper that pulls from `ZoteroPane.getSortedItems()`.
+- `src/modules/iso639-1.ts` — validity check against the standard 184-code
+  ISO 639-1 set (case-insensitive, ignoring region/script subtags).
+- `src/modules/iso639-convert.ts` — `convertLanguageValue()` maps legacy
+  values to ISO 639-1. Three-letter codes (639-3, 639-2/B, 639-2/T) come from
+  the [`iso-639-3`](https://www.npmjs.com/package/iso-639-3) package (only its
+  small subpath tables are imported); language names are reverse-looked-up
+  through `Intl.DisplayNames` in English and the Zotero locale.
 - `src/modules/dialog/classify-dialog.ts` — the dialog controller. Builds row
   state, runs classification in chunks (yielding between them so the UI
   stays responsive on large collections), drives the
   [`VirtualizedTableHelper`](https://github.com/windingwind/zotero-plugin-toolkit)
-  table, and applies writes (`item.setField('language', code)` +
+  table, resolves each row's outcome from its current value, the cached
+  detection and the footer options (`resolveRow()`; classification runs once,
+  toggling a checkbox only re-resolves), and applies writes (`item.setField('language', code)` +
   `item.saveTx()`) on Apply. The dialog window is idempotent — triggering
   the menu entry again while it's open just focuses the existing window.
 - `addon/content/dialog/classify.xhtml` / `classify.css` — the dialog's
@@ -155,8 +172,8 @@ cp .env.example .env
 Tests (`test/**/*.test.ts`, Mocha + Chai) run inside a real, temporary
 Zotero instance via `zotero-plugin-scaffold`'s test harness — not a
 Node-only mock — so they exercise the actual classifier (`eld`) and the
-plugin's real startup path. Pure logic (`isEligible`, `isIso6391Code`,
-`buildRows`/`previewRows`, `formatCreators`) is unit-tested directly; code
+plugin's real startup path. Pure logic (`isEligible`, `isIso6391Code`, `convertLanguageValue`,
+`buildRows`/`previewRows`/`resolveRow`, `formatCreators`) is unit-tested directly; code
 that only makes sense against a live Zotero window (the dialog's rendering,
 menu registration) is covered by the manual checklist in the design spec
 instead.
