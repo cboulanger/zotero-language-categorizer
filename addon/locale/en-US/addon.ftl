@@ -8,6 +8,7 @@ dialog-skip-hint = Double-click a row to skip it — incorrectly classified item
 dialog-iso-link-text = What is ISO 639-1?
 dialog-iso-link-href = https://en.wikipedia.org/wiki/ISO_639-1
 dialog-empty-state = No items without a language code found in the current view.
+dialog-scanning = Scanning the library for eligible items…
 dialog-cancel = Cancel
 dialog-apply = Apply
 dialog-done = Done

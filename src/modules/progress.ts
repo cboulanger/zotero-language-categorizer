@@ -33,11 +33,13 @@ export async function runChunked<T>(
   items: T[],
   progress: ProgressWindowHelper,
   work: (group: T[]) => void | Promise<void>,
+  shouldStop?: () => boolean,
 ): Promise<void> {
   const total = items.length;
   try {
     let processed = 0;
     for (const group of chunk(items, CHUNK_SIZE)) {
+      if (shouldStop?.()) return;
       await work(group);
       processed += group.length;
       progress.changeLine({
@@ -49,7 +51,13 @@ export async function runChunked<T>(
       await new Promise((r) => win.setTimeout(r, 0));
     }
   } finally {
-    progress.startCloseTimer(2000);
+    // Cancellation wants the toast gone right away, not lingering for the
+    // usual 2s grace period meant to let a completed run stay readable.
+    if (shouldStop?.()) {
+      progress.close();
+    } else {
+      progress.startCloseTimer(2000);
+    }
   }
 }
 
@@ -58,7 +66,8 @@ export async function runWithProgress<T>(
   items: T[],
   headline: string,
   work: (group: T[]) => void | Promise<void>,
+  shouldStop?: () => boolean,
 ): Promise<void> {
   const progress = createProgressWindow(headline, items.length);
-  await runChunked(win, items, progress, work);
+  await runChunked(win, items, progress, work, shouldStop);
 }

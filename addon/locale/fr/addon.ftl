@@ -8,6 +8,7 @@ dialog-skip-hint = Double-cliquez sur une ligne pour l'ignorer — les documents
 dialog-iso-link-text = Qu'est-ce que l'ISO 639-1 ?
 dialog-iso-link-href = https://fr.wikipedia.org/wiki/ISO_639-1
 dialog-empty-state = Aucun document sans code de langue trouvé dans la vue actuelle.
+dialog-scanning = Recherche de documents éligibles dans la bibliothèque en cours…
 dialog-cancel = Annuler
 dialog-apply = Appliquer
 dialog-done = Terminé

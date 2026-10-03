@@ -8,6 +8,7 @@ dialog-skip-hint = Haz doble clic en una fila para omitirla — los elementos cl
 dialog-iso-link-text = ¿Qué es ISO 639-1?
 dialog-iso-link-href = https://es.wikipedia.org/wiki/ISO_639-1
 dialog-empty-state = No se encontraron elementos sin código de idioma en la vista actual.
+dialog-scanning = Buscando elementos elegibles en la biblioteca…
 dialog-cancel = Cancelar
 dialog-apply = Aplicar
 dialog-done = Listo

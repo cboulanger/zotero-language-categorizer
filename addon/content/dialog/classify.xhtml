@@ -28,10 +28,11 @@ href="chrome://zotero-platform/content/zotero.css" type="text/css"?>
           "chrome://zotero-lang-cat/content/scripts/zotero-lang-cat.js",
           window,
         );
-        const rows = window.arguments?.[0]?.rows ?? [];
+        const items = window.arguments?.[0]?.items ?? [];
         const controller = new Zotero.LanguageCategorizer.api.DialogController(
           window,
-          rows,
+          [],
+          items,
         );
         controller.init();
       });

@@ -14,6 +14,7 @@ export type FluentMessageId =
   | 'dialog-heading'
   | 'dialog-iso-link-href'
   | 'dialog-iso-link-text'
+  | 'dialog-scanning'
   | 'dialog-skip-hint'
   | 'dialog-title'
   | 'menu-classify'

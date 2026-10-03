@@ -8,6 +8,7 @@ dialog-skip-hint = Durch Doppelklick auf einen Eintrag wird dieser übersprungen
 dialog-iso-link-text = Was ist ISO 639-1?
 dialog-iso-link-href = https://de.wikipedia.org/wiki/ISO_639-1
 dialog-empty-state = In der aktuellen Ansicht wurden keine Einträge ohne Sprachcode gefunden.
+dialog-scanning = Die Bibliothek wird nach geeigneten Einträgen durchsucht…
 dialog-cancel = Abbrechen
 dialog-apply = Anwenden
 dialog-done = Fertig

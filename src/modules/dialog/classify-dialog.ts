@@ -2,6 +2,7 @@ import { VirtualizedTableHelper } from "zotero-plugin-toolkit";
 import { getClassifier } from "../classifiers";
 import { getString } from "../../utils/locale";
 import { runWithProgress } from "../progress";
+import { filterEligibleItems } from "../scan";
 import type { LanguageClassifier } from "../classifiers/types";
 import type { ScannableItem } from "../scan";
 
@@ -68,6 +69,10 @@ export const DIALOG_WINDOW_TYPE = "zotero-lang-cat:dialog";
 
 // Idempotent: focuses the existing dialog instead of opening a second one
 // if the user triggers the menu entry again while it's already open.
+//
+// `items` must be captured by the caller before this opens the dialog
+// window — see getScopedItems's doc comment for why it can't be looked up
+// from inside the dialog itself.
 export function openClassifyDialog(items: ApplyableItem[]): void {
   const existing = Services.wm.getMostRecentWindow(DIALOG_WINDOW_TYPE) as
     (Window & { focus(): void }) | null;
@@ -76,13 +81,12 @@ export function openClassifyDialog(items: ApplyableItem[]): void {
     return;
   }
 
-  const rows = buildRows(items);
   const win = Zotero.getMainWindow();
   win.openDialog(
     "chrome://zotero-lang-cat/content/dialog/classify.xhtml",
     "zotero-lang-cat-dialog",
     "chrome,centerscreen,resizable=yes,width=700,height=500",
-    { rows },
+    { items },
   );
 }
 
@@ -90,11 +94,16 @@ export class DialogController {
   table?: VirtualizedTableHelper;
   rows: RowState[];
   applied = false;
+  private cancelled = false;
+  private busy = false;
   private cancelButton?: HTMLButtonElement;
+  private emptyState?: HTMLElement;
+  private tableContainer?: HTMLElement;
 
   constructor(
     private win: Window,
-    rows: RowState[],
+    rows: RowState[] = [],
+    private itemsToScan: ApplyableItem[] = [],
   ) {
     this.rows = rows;
   }
@@ -126,12 +135,13 @@ export class DialogController {
       "zotero-lang-cat-iso-link",
     ) as HTMLAnchorElement;
     this.cancelButton = cancelButton;
+    this.emptyState = emptyState;
+    this.tableContainer = tableContainer;
 
     doc.title = getString("dialog-title");
     heading.textContent = getString("dialog-heading");
     explanation.textContent = getString("dialog-explanation");
     skipHint.textContent = getString("dialog-skip-hint");
-    emptyState.textContent = getString("dialog-empty-state");
     cancelButton.textContent = getString("dialog-cancel");
     actionButton.textContent = getString("dialog-apply");
 
@@ -143,7 +153,17 @@ export class DialogController {
       Zotero.launchURL(isoLinkHref);
     });
 
-    cancelButton.addEventListener("click", () => this.win.close());
+    // Cancel is live through every phase (scanning, classifying, applying):
+    // it flags cancellation for whichever chunked loop is running, which
+    // stops at its next chunk boundary and closes the window itself (via
+    // the `busy` check in each phase's `finally`) — closing here instead,
+    // while a loop still holds a `this.win.setTimeout` in flight, would
+    // tear down the window out from under it.
+    cancelButton.addEventListener("click", () => {
+      this.cancelled = true;
+      cancelButton.disabled = true;
+      if (!this.busy) this.win.close();
+    });
     actionButton.addEventListener("click", () => {
       if (this.applied) {
         this.win.close();
@@ -152,13 +172,50 @@ export class DialogController {
       }
     });
 
-    if (this.rows.length === 0) {
-      emptyState.hidden = false;
-      tableContainer.hidden = true;
-      actionButton.disabled = true;
-      return;
-    }
+    emptyState.textContent = getString("dialog-scanning");
+    emptyState.hidden = false;
+    tableContainer.hidden = true;
 
+    void this.scanAndClassify(actionButton);
+  }
+
+  private async scanAndClassify(
+    actionButton: HTMLButtonElement,
+  ): Promise<void> {
+    const emptyState = this.emptyState!;
+    const tableContainer = this.tableContainer!;
+    this.busy = true;
+    try {
+      const items = await filterEligibleItems(
+        this.itemsToScan,
+        this.win,
+        () => this.cancelled,
+      );
+      if (this.cancelled) return;
+
+      this.rows = buildRows(items);
+      if (this.rows.length === 0) {
+        emptyState.textContent = getString("dialog-empty-state");
+        actionButton.disabled = true;
+        return;
+      }
+
+      emptyState.hidden = true;
+      tableContainer.hidden = false;
+      const table = this.setupTable();
+      // render()'s mount is async — treeInstance isn't set until its
+      // onfulfilled callback fires, so classify() (which invalidates the
+      // tree) must not start until then.
+      table.render(undefined, () => {
+        void this.classify(actionButton);
+      });
+    } finally {
+      this.busy = false;
+      if (this.cancelled) this.win.close();
+    }
+  }
+
+  private setupTable(): VirtualizedTableHelper {
     this.table = new VirtualizedTableHelper(this.win)
       .setProp("id", "zotero-lang-cat-table")
       .setProp("getRowCount", () => this.rows.length)
@@ -189,15 +246,7 @@ export class DialogController {
         this.table?.treeInstance.invalidate();
       })
       .setContainerId("zotero-lang-cat-table-container");
-
-    // Opening the dialog performs the classification immediately (it's fast
-    // enough not to need a separate "Preview" step); Apply only writes.
-    // render()'s mount is async — treeInstance isn't set until its
-    // onfulfilled callback fires, so classify() (which invalidates the
-    // tree) must not start until then.
-    this.table.render(undefined, () => {
-      void this.classify(actionButton);
-    });
+    return this.table;
   }
 
   rowData(i: number): Record<string, string> {
@@ -220,6 +269,7 @@ export class DialogController {
   }
 
   async classify(actionButton: HTMLButtonElement): Promise<void> {
+    this.busy = true;
     try {
       const classifier = getClassifier();
       await runWithProgress(
@@ -230,15 +280,22 @@ export class DialogController {
           previewRows(group, classifier);
           this.table?.treeInstance.invalidate();
         },
+        () => this.cancelled,
       );
     } finally {
-      actionButton.disabled = false;
+      this.busy = false;
+      if (this.cancelled) {
+        this.win.close();
+      } else {
+        actionButton.disabled = false;
+      }
     }
   }
 
   async onApplyClick(button: HTMLButtonElement): Promise<void> {
     button.disabled = true;
     await this.runApply();
+    if (this.cancelled) return;
     this.applied = true;
     button.textContent = getString("dialog-done");
     button.disabled = false;
@@ -248,23 +305,30 @@ export class DialogController {
   }
 
   async runApply(): Promise<void> {
-    const toApply = this.rows.filter((r) => r.code && !r.excluded);
-    await runWithProgress(
-      this.win,
-      toApply,
-      getString("progress-apply-headline"),
-      async (group) => {
-        for (const row of group) {
-          try {
-            (row.item as ApplyableItem).setField("language", row.code!);
-            await (row.item as ApplyableItem).saveTx();
-            row.status = "success";
-          } catch (e) {
-            row.status = "error";
+    this.busy = true;
+    try {
+      const toApply = this.rows.filter((r) => r.code && !r.excluded);
+      await runWithProgress(
+        this.win,
+        toApply,
+        getString("progress-apply-headline"),
+        async (group) => {
+          for (const row of group) {
+            try {
+              (row.item as ApplyableItem).setField("language", row.code!);
+              await (row.item as ApplyableItem).saveTx();
+              row.status = "success";
+            } catch (e) {
+              row.status = "error";
+            }
+            this.table?.treeInstance.invalidate();
           }
-          this.table?.treeInstance.invalidate();
-        }
-      },
-    );
+        },
+        () => this.cancelled,
+      );
+    } finally {
+      this.busy = false;
+      if (this.cancelled) this.win.close();
+    }
   }
 }
