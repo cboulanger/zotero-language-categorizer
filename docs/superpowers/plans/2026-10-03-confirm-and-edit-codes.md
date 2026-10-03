@@ -24,6 +24,7 @@
 ### Task 1: Pure logic — default-exclude, display, and code-commit validation
 
 **Files:**
+
 - Modify: `src/modules/dialog/classify-dialog.ts:1-7` (imports)
 - Modify: `src/modules/dialog/classify-dialog.ts:43-60` (`previewRows`)
 - Modify: `src/modules/dialog/classify-dialog.ts:252-269` (`rowData`)
@@ -31,6 +32,7 @@
 - Test: `test/dialog/classify-dialog.test.ts`
 
 **Interfaces:**
+
 - Consumes: `isIso6391Code` from `../iso639-1` (already exists, already used by `scan.ts` the same way).
 - Produces: `export function commitCodeEdit(row: RowState, rawValue: string): boolean` — returns `true` and mutates `row.code`/`row.excluded` on a valid code, returns `false` and leaves `row` unchanged otherwise.
 
@@ -66,23 +68,21 @@ import type { ScannableItem } from "../scan";
 In `test/dialog/classify-dialog.test.ts`, add a new `describe` block right after the existing `describe("previewRows", ...)` block (after its closing `});` at line 108):
 
 ```ts
-  describe("previewRows — low-confidence default exclusion", function () {
-    it("excludes a row by default when the classifier reports it unreliable", function () {
-      const rows = buildRows([makeItem("Short")]);
-      previewRows(rows, fakeClassifier);
-      expect(rows[0].reliable).to.be.false;
-      expect(rows[0].excluded).to.be.true;
-    });
-
-    it("leaves a reliably-classified row included by default", function () {
-      const rows = buildRows([
-        makeItem("Hello World, a long enough title"),
-      ]);
-      previewRows(rows, fakeClassifier);
-      expect(rows[0].reliable).to.be.true;
-      expect(rows[0].excluded).to.be.false;
-    });
+describe("previewRows — low-confidence default exclusion", function () {
+  it("excludes a row by default when the classifier reports it unreliable", function () {
+    const rows = buildRows([makeItem("Short")]);
+    previewRows(rows, fakeClassifier);
+    expect(rows[0].reliable).to.be.false;
+    expect(rows[0].excluded).to.be.true;
   });
+
+  it("leaves a reliably-classified row included by default", function () {
+    const rows = buildRows([makeItem("Hello World, a long enough title")]);
+    previewRows(rows, fakeClassifier);
+    expect(rows[0].reliable).to.be.true;
+    expect(rows[0].excluded).to.be.false;
+  });
+});
 ```
 
 (`fakeClassifier` in this file reports `reliable: text.length > 20`, so `"Short"` — 5 characters — comes back unreliable, and the existing long title comes back reliable; both are already used this way by the existing `previewRows` tests above.)
@@ -92,31 +92,31 @@ In `test/dialog/classify-dialog.test.ts`, add a new `describe` block right after
 In the same file, add after the block from Step 2:
 
 ```ts
-  describe("rowData — current/predicted columns", function () {
-    it("shows the (?) marker and 🚫 for an unconfirmed low-confidence row", function () {
-      const rows = buildRows([makeItem("Short")]);
-      previewRows(rows, fakeClassifier);
-      const controller = new DialogController(fakeWin, rows);
-      const data = controller.rowData(0);
-      expect(data.current).to.equal("—");
-      expect(data.predicted).to.equal("🚫 en (?)");
-    });
-
-    it("hides the (?) marker and 🚫 once the row is confirmed", function () {
-      const rows = buildRows([makeItem("Short")]);
-      previewRows(rows, fakeClassifier);
-      rows[0].excluded = false; // simulates the existing double-click toggle
-      const controller = new DialogController(fakeWin, rows);
-      const data = controller.rowData(0);
-      expect(data.predicted).to.equal("en");
-    });
-
-    it("shows the item's existing language in the current column when set", function () {
-      const rows = buildRows([makeItem("Title", "", "German")]);
-      const controller = new DialogController(fakeWin, rows);
-      expect(controller.rowData(0).current).to.equal("German");
-    });
+describe("rowData — current/predicted columns", function () {
+  it("shows the (?) marker and 🚫 for an unconfirmed low-confidence row", function () {
+    const rows = buildRows([makeItem("Short")]);
+    previewRows(rows, fakeClassifier);
+    const controller = new DialogController(fakeWin, rows);
+    const data = controller.rowData(0);
+    expect(data.current).to.equal("—");
+    expect(data.predicted).to.equal("🚫 en (?)");
   });
+
+  it("hides the (?) marker and 🚫 once the row is confirmed", function () {
+    const rows = buildRows([makeItem("Short")]);
+    previewRows(rows, fakeClassifier);
+    rows[0].excluded = false; // simulates the existing double-click toggle
+    const controller = new DialogController(fakeWin, rows);
+    const data = controller.rowData(0);
+    expect(data.predicted).to.equal("en");
+  });
+
+  it("shows the item's existing language in the current column when set", function () {
+    const rows = buildRows([makeItem("Title", "", "German")]);
+    const controller = new DialogController(fakeWin, rows);
+    expect(controller.rowData(0).current).to.equal("German");
+  });
+});
 ```
 
 - [x] **Step 4: Write the failing tests for `commitCodeEdit`**
@@ -147,35 +147,35 @@ import {
 Then, in the same file, add the following `describe` block after the block from Step 3:
 
 ```ts
-  describe("commitCodeEdit", function () {
-    it("accepts a valid ISO 639-1 code, updates the row, and confirms it", function () {
-      const rows = buildRows([makeItem("Title")]);
-      rows[0].code = "en";
-      rows[0].excluded = true;
-      const ok = commitCodeEdit(rows[0], " FR ");
-      expect(ok).to.be.true;
-      expect(rows[0].code).to.equal("fr");
-      expect(rows[0].excluded).to.be.false;
-    });
-
-    it("accepts a valid code for a row the classifier never produced a code for", function () {
-      const rows = buildRows([makeItem("Title")]);
-      const ok = commitCodeEdit(rows[0], "de");
-      expect(ok).to.be.true;
-      expect(rows[0].code).to.equal("de");
-      expect(rows[0].excluded).to.be.false;
-    });
-
-    it("rejects an invalid code and leaves the row unchanged", function () {
-      const rows = buildRows([makeItem("Title")]);
-      rows[0].code = "en";
-      rows[0].excluded = true;
-      const ok = commitCodeEdit(rows[0], "xx-not-a-code");
-      expect(ok).to.be.false;
-      expect(rows[0].code).to.equal("en");
-      expect(rows[0].excluded).to.be.true;
-    });
+describe("commitCodeEdit", function () {
+  it("accepts a valid ISO 639-1 code, updates the row, and confirms it", function () {
+    const rows = buildRows([makeItem("Title")]);
+    rows[0].code = "en";
+    rows[0].excluded = true;
+    const ok = commitCodeEdit(rows[0], " FR ");
+    expect(ok).to.be.true;
+    expect(rows[0].code).to.equal("fr");
+    expect(rows[0].excluded).to.be.false;
   });
+
+  it("accepts a valid code for a row the classifier never produced a code for", function () {
+    const rows = buildRows([makeItem("Title")]);
+    const ok = commitCodeEdit(rows[0], "de");
+    expect(ok).to.be.true;
+    expect(rows[0].code).to.equal("de");
+    expect(rows[0].excluded).to.be.false;
+  });
+
+  it("rejects an invalid code and leaves the row unchanged", function () {
+    const rows = buildRows([makeItem("Title")]);
+    rows[0].code = "en";
+    rows[0].excluded = true;
+    const ok = commitCodeEdit(rows[0], "xx-not-a-code");
+    expect(ok).to.be.false;
+    expect(rows[0].code).to.equal("en");
+    expect(rows[0].excluded).to.be.true;
+  });
+});
 ```
 
 - [x] **Step 5: Confirm the tests fail to compile (expected, in this environment)**
@@ -318,6 +318,7 @@ git commit -m "feat: default-exclude low-confidence predictions, add manual code
 ### Task 2: Locale strings, typings, and markup/CSS for the new UI
 
 **Files:**
+
 - Modify: `addon/locale/en-US/addon.ftl`
 - Modify: `addon/locale/de/addon.ftl`
 - Modify: `addon/locale/fr/addon.ftl`
@@ -327,6 +328,7 @@ git commit -m "feat: default-exclude low-confidence predictions, add manual code
 - Modify: `addon/content/dialog/classify.css`
 
 **Interfaces:**
+
 - Produces: `getString("dialog-column-current")`, `getString("dialog-column-predicted")`, `getString("dialog-edit-hint")`; `getString("dialog-skip-hint")` now returns reworded text. `getString("dialog-column-change")` no longer exists — Task 3 must not reference it.
 
 - [x] **Step 1: Update `addon/locale/en-US/addon.ftl`**
@@ -451,20 +453,20 @@ Expected: exits 0 ("Build finished"), and `typings/i10n.d.ts` now lists `dialog-
 In `addon/content/dialog/classify.xhtml`, change (lines 47-50):
 
 ```html
-        <p id="zotero-lang-cat-skip-hint">
-          Double-click a row to skip it — incorrectly classified items won't
-          be changed when you apply.
-        </p>
+<p id="zotero-lang-cat-skip-hint">
+  Double-click a row to skip it — incorrectly classified items won't be changed
+  when you apply.
+</p>
 ```
 
 to:
 
 ```html
-        <p id="zotero-lang-cat-skip-hint">
-          Double-click a row to skip it — incorrectly classified items won't
-          be changed when you apply.
-        </p>
-        <p id="zotero-lang-cat-edit-hint"></p>
+<p id="zotero-lang-cat-skip-hint">
+  Double-click a row to skip it — incorrectly classified items won't be changed
+  when you apply.
+</p>
+<p id="zotero-lang-cat-edit-hint"></p>
 ```
 
 (The placeholder English text inside `#zotero-lang-cat-skip-hint` is overwritten by `getString("dialog-skip-hint")` at runtime, same as today — it's not read directly.)
@@ -507,6 +509,7 @@ git commit -m "feat(i18n): add confirm/edit locale strings and editor styling"
 ### Task 3: Column split, double-click routing, and the inline code editor
 
 **Files:**
+
 - Modify: `src/modules/dialog/classify-dialog.ts:93-109` (`DialogController` field declarations + constructor)
 - Modify: `src/modules/dialog/classify-dialog.ts:111-180` (`init()`, to wire the new hint element)
 - Modify: `src/modules/dialog/classify-dialog.ts:218-250` (`setupTable()`)
@@ -547,33 +550,27 @@ export class DialogController {
 In `init()`, change the `skipHint` lookup block (lines 119-121) to also look up the new hint element:
 
 ```ts
-    const skipHint = doc.getElementById(
-      "zotero-lang-cat-skip-hint",
-    ) as HTMLElement;
+const skipHint = doc.getElementById("zotero-lang-cat-skip-hint") as HTMLElement;
 ```
 
 to:
 
 ```ts
-    const skipHint = doc.getElementById(
-      "zotero-lang-cat-skip-hint",
-    ) as HTMLElement;
-    const editHint = doc.getElementById(
-      "zotero-lang-cat-edit-hint",
-    ) as HTMLElement;
+const skipHint = doc.getElementById("zotero-lang-cat-skip-hint") as HTMLElement;
+const editHint = doc.getElementById("zotero-lang-cat-edit-hint") as HTMLElement;
 ```
 
 And change the string-assignment block (line 144) from:
 
 ```ts
-    skipHint.textContent = getString("dialog-skip-hint");
+skipHint.textContent = getString("dialog-skip-hint");
 ```
 
 to:
 
 ```ts
-    skipHint.textContent = getString("dialog-skip-hint");
-    editHint.textContent = getString("dialog-edit-hint");
+skipHint.textContent = getString("dialog-skip-hint");
+editHint.textContent = getString("dialog-edit-hint");
 ```
 
 - [x] **Step 2: Split the "Change" column into "Current" and "Predicted", and route double-click to edit vs. toggle**

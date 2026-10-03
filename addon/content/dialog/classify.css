@@ -159,6 +159,10 @@ body {
   border: 1px solid #2563eb;
   border-radius: 3px;
   outline: none;
+  /* Above the table header's sticky z-index: 1 (see rule above), since the
+   * editor is appended to document.body, outside the table's own stacking
+   * context. */
+  z-index: 2;
 }
 .zotero-lang-cat-code-editor.invalid {
   border-color: #c62828;
