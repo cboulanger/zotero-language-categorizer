@@ -335,8 +335,17 @@ export class DialogController {
     });
 
     this.win.document.body!.appendChild(input);
-    input.focus();
-    input.select();
+    // The table itself schedules a `setTimeout(() => this._topDiv.focus())`
+    // from the row's mousedown/mouseup handlers (part of every click,
+    // including both clicks of this double-click) to return focus to the
+    // tree for keyboard navigation. Those are already queued by the time
+    // this dblclick handler runs, so focusing synchronously here would just
+    // get stolen back a tick later. Queuing our own focus the same way puts
+    // it after the table's in the macrotask queue, so it wins instead.
+    this.win.setTimeout(() => {
+      input.focus();
+      input.select();
+    });
     this.activeEditor = input;
   }
 
