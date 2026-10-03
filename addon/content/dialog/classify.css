@@ -149,3 +149,17 @@ body {
 #zotero-lang-cat-table .row.highlighted:not(.selected) {
   color: #999 !important;
 }
+#zotero-lang-cat-table .cell.predicted {
+  cursor: text;
+}
+.zotero-lang-cat-code-editor {
+  box-sizing: border-box;
+  font: inherit;
+  padding: 0 4px;
+  border: 1px solid #2563eb;
+  border-radius: 3px;
+  outline: none;
+}
+.zotero-lang-cat-code-editor.invalid {
+  border-color: #c62828;
+}
