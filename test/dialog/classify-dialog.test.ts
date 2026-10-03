@@ -2,6 +2,7 @@ import { expect } from "chai";
 import {
   buildRows,
   previewRows,
+  resolveRow,
   formatCreators,
   DialogController,
 } from "../../src/modules/dialog/classify-dialog";
@@ -143,6 +144,61 @@ describe("classify-dialog", function () {
       await controller.runApply();
       expect(saved).to.be.false;
       expect(rows[0].status).to.equal("pending");
+    });
+  });
+
+  describe("resolveRow", function () {
+    function row(language: string) {
+      const r = buildRows([makeItem("Hello World", "", language)])[0];
+      r.detected = { code: "en", reliable: true };
+      return r;
+    }
+    const opt = (overwrite: boolean, convert = false) => ({
+      overwrite,
+      convert,
+    });
+
+    it("fills an empty field regardless of options", function () {
+      const r = row("");
+      resolveRow(r, opt(false));
+      expect(r.code).to.equal("en");
+    });
+
+    it("leaves existing values untouched unless overwrite is on", function () {
+      for (const lang of ["fr", "deu", "xyz"]) {
+        const r = row(lang);
+        resolveRow(r, opt(false));
+        expect(r.code, lang).to.be.null;
+      }
+    });
+
+    it("overwrites existing values with the detection when overwrite is on", function () {
+      for (const lang of ["fr", "deu", "xyz"]) {
+        const r = row(lang);
+        resolveRow(r, opt(true));
+        expect(r.code, lang).to.equal("en");
+      }
+    });
+
+    it("converts mappable values when overwrite and convert are on", function () {
+      const r = row("deu");
+      resolveRow(r, opt(true, true));
+      expect(r.code).to.equal("de");
+    });
+
+    it("falls back to detection for unmappable values and keeps valid codes detected", function () {
+      const a = row("xyz");
+      resolveRow(a, opt(true, true));
+      expect(a.code).to.equal("en");
+      const b = row("fr");
+      resolveRow(b, opt(true, true));
+      expect(b.code).to.equal("en");
+    });
+
+    it("never converts without overwrite", function () {
+      const r = row("deu");
+      resolveRow(r, opt(false, true));
+      expect(r.code).to.be.null;
     });
   });
 });

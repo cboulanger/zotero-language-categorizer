@@ -6,12 +6,17 @@ import { getClassifier } from "../classifiers";
 import { getString } from "../../utils/locale";
 import type { LanguageClassifier } from "../classifiers/types";
 import type { ScannableItem } from "../scan";
+import { isIso6391Code } from "../iso639-1";
+import { convertLanguageValue } from "../iso639-convert";
 
 export interface RowState {
   item: ScannableItem;
   title: string;
   creators: string;
   currentLanguage: string;
+  // Classifier result, cached so toggling options needn't re-classify.
+  detected: { code: string; reliable: boolean } | null;
+  // Resulting change under the current options; null = row left untouched.
   code: string | null;
   reliable: boolean | null;
   status: "pending" | "success" | "error";
@@ -34,6 +39,7 @@ export function buildRows(
     title: item.getField("title") || "(no title)",
     creators: formatCreators(item.getCreators()),
     currentLanguage: item.getField("language") || "",
+    detected: null,
     code: null,
     reliable: null,
     status: "pending",
@@ -41,22 +47,48 @@ export function buildRows(
   }));
 }
 
+export interface RowOptions {
+  overwrite: boolean;
+  convert: boolean;
+}
+
+export const DEFAULT_OPTIONS: RowOptions = { overwrite: false, convert: false };
+
+// Decides what (if anything) a row changes to, from its current language
+// value, the cached detection and the footer options. Existing data is only
+// touched when `overwrite` is on; `convert` (which requires overwrite) maps
+// legacy codes/names to ISO 639-1 instead of re-detecting them.
+export function resolveRow(row: RowState, options: RowOptions): void {
+  const current = row.currentLanguage.trim();
+  let result: { code: string; reliable: boolean | null } | null = null;
+  if (!current) {
+    result = row.detected;
+  } else if (options.overwrite) {
+    const converted =
+      options.convert && !isIso6391Code(current)
+        ? convertLanguageValue(current, ["en", Zotero.locale])
+        : null;
+    result = converted ? { code: converted, reliable: true } : row.detected;
+  }
+  row.code = result?.code ?? null;
+  row.reliable = result?.reliable ?? null;
+}
+
 export function previewRows(
   rows: RowState[],
   classifier: LanguageClassifier,
+  options: RowOptions = DEFAULT_OPTIONS,
 ): void {
   for (const row of rows) {
     try {
       const title = row.item.getField("title") || "";
       const abstractNote = row.item.getField("abstractNote") || "";
       const text = [title, abstractNote].filter(Boolean).join("\n");
-      const result = classifier.classify(text);
-      row.code = result?.code ?? null;
-      row.reliable = result?.reliable ?? null;
+      row.detected = classifier.classify(text);
     } catch (e) {
-      row.code = null;
-      row.reliable = null;
+      row.detected = null;
     }
+    resolveRow(row, options);
   }
 }
 
@@ -102,7 +134,12 @@ export class DialogController {
   table?: VirtualizedTableHelper;
   rows: RowState[];
   applied = false;
+  options: RowOptions = { ...DEFAULT_OPTIONS };
+  classified = false;
   private cancelButton?: HTMLButtonElement;
+  private actionButton?: HTMLButtonElement;
+  private overwriteBox?: HTMLInputElement;
+  private convertBox?: HTMLInputElement;
 
   constructor(
     private win: Window,
@@ -137,7 +174,16 @@ export class DialogController {
     const isoLink = doc.getElementById(
       "zotero-lang-cat-iso-link",
     ) as HTMLAnchorElement;
+    const overwriteBox = doc.getElementById(
+      "zotero-lang-cat-opt-overwrite",
+    ) as HTMLInputElement;
+    const convertBox = doc.getElementById(
+      "zotero-lang-cat-opt-convert",
+    ) as HTMLInputElement;
     this.cancelButton = cancelButton;
+    this.actionButton = actionButton;
+    this.overwriteBox = overwriteBox;
+    this.convertBox = convertBox;
 
     doc.title = getString("dialog-title");
     heading.textContent = getString("dialog-heading");
@@ -146,6 +192,19 @@ export class DialogController {
     emptyState.textContent = getString("dialog-empty-state");
     cancelButton.textContent = getString("dialog-cancel");
     actionButton.textContent = getString("dialog-apply");
+    doc.getElementById("zotero-lang-cat-opt-overwrite-label")!.textContent =
+      getString("dialog-opt-overwrite");
+    doc.getElementById("zotero-lang-cat-opt-convert-label")!.textContent =
+      getString("dialog-opt-convert");
+    overwriteBox.checked = false;
+    convertBox.checked = false;
+    convertBox.disabled = true;
+    overwriteBox.addEventListener("change", () => {
+      if (!overwriteBox.checked) convertBox.checked = false;
+      convertBox.disabled = !overwriteBox.checked;
+      this.onOptionsChange();
+    });
+    convertBox.addEventListener("change", () => this.onOptionsChange());
 
     const isoLinkHref = getString("dialog-iso-link-href");
     isoLink.textContent = getString("dialog-iso-link-text");
@@ -168,6 +227,7 @@ export class DialogController {
       emptyState.hidden = false;
       tableContainer.hidden = true;
       actionButton.disabled = true;
+      overwriteBox.disabled = true;
       return;
     }
 
@@ -199,6 +259,7 @@ export class DialogController {
           if (row) row.excluded = !row.excluded;
         }
         this.table?.treeInstance.invalidate();
+        this.updateActionState();
       })
       .setContainerId("zotero-lang-cat-table-container");
 
@@ -219,15 +280,23 @@ export class DialogController {
       ? row.reliable === false
         ? `${row.code} (?)`
         : row.code
-      : "…";
-    const change = `${oldValue} → ${newValue}`;
+      : !this.classified
+        ? "…"
+        : row.currentLanguage.trim()
+          ? getString("dialog-unchanged")
+          : "?";
+    const change = row.code
+      ? `${oldValue} → ${newValue}`
+      : this.classified && row.currentLanguage.trim()
+        ? `${oldValue} (${newValue})`
+        : `${oldValue} → ${newValue}`;
     return {
       title: row.title,
       creators: row.creators,
       change: row.excluded ? `🚫 ${change}` : change,
       status:
         row.status === "success" ? "✓" : row.status === "error" ? "✗" : "",
-      highlighted: row.excluded ? "1" : "",
+      highlighted: row.excluded || (this.classified && !row.code) ? "1" : "",
     };
   }
 
@@ -247,7 +316,7 @@ export class DialogController {
       const classifier = getClassifier();
       let processed = 0;
       for (const group of chunk(this.rows, CHUNK_SIZE)) {
-        previewRows(group, classifier);
+        previewRows(group, classifier, this.options);
         processed += group.length;
         progress.changeLine({
           text: getString("progress-items-processed", {
@@ -259,9 +328,28 @@ export class DialogController {
         await new Promise((r) => this.win.setTimeout(r, 0));
       }
     } finally {
-      actionButton.disabled = false;
+      this.classified = true;
+      this.updateActionState();
+      this.table?.treeInstance.invalidate();
       progress.startCloseTimer(2000);
     }
+  }
+
+  onOptionsChange(): void {
+    this.options = {
+      overwrite: Boolean(this.overwriteBox?.checked),
+      convert: Boolean(this.convertBox?.checked),
+    };
+    for (const row of this.rows) resolveRow(row, this.options);
+    this.table?.treeInstance.invalidate();
+    this.updateActionState();
+  }
+
+  // Apply needs finished classification and at least one pending change.
+  updateActionState(): void {
+    if (!this.actionButton || this.applied) return;
+    this.actionButton.disabled =
+      !this.classified || !this.rows.some((r) => r.code && !r.excluded);
   }
 
   async onApplyClick(button: HTMLButtonElement): Promise<void> {
@@ -273,6 +361,8 @@ export class DialogController {
     // Cancel is redundant once changes are applied — there's nothing left
     // to cancel, and "Done" now closes the dialog on its own.
     if (this.cancelButton) this.cancelButton.disabled = true;
+    if (this.overwriteBox) this.overwriteBox.disabled = true;
+    if (this.convertBox) this.convertBox.disabled = true;
   }
 
   async runApply(): Promise<void> {

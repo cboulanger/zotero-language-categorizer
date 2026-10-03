@@ -14,8 +14,11 @@ export type FluentMessageId =
   | 'dialog-heading'
   | 'dialog-iso-link-href'
   | 'dialog-iso-link-text'
+  | 'dialog-opt-convert'
+  | 'dialog-opt-overwrite'
   | 'dialog-skip-hint'
   | 'dialog-title'
+  | 'dialog-unchanged'
   | 'menu-classify'
   | 'progress-classify-headline'
   | 'progress-items-processed';
