@@ -19,4 +19,5 @@ export type FluentMessageId =
   | 'menu-classify'
   | 'progress-apply-headline'
   | 'progress-classify-headline'
-  | 'progress-items-processed';
+  | 'progress-items-processed'
+  | 'progress-scan-headline';

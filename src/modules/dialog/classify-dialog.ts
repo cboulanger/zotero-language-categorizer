@@ -1,9 +1,7 @@
-import {
-  ProgressWindowHelper,
-  VirtualizedTableHelper,
-} from "zotero-plugin-toolkit";
+import { VirtualizedTableHelper } from "zotero-plugin-toolkit";
 import { getClassifier } from "../classifiers";
 import { getString } from "../../utils/locale";
+import { runWithProgress } from "../progress";
 import type { LanguageClassifier } from "../classifiers/types";
 import type { ScannableItem } from "../scan";
 
@@ -57,49 +55,6 @@ export function previewRows(
       row.code = null;
       row.reliable = null;
     }
-  }
-}
-
-export const CHUNK_SIZE = 50;
-
-export function chunk<T>(items: T[], size: number): T[][] {
-  const chunks: T[][] = [];
-  for (let i = 0; i < items.length; i += size) {
-    chunks.push(items.slice(i, i + size));
-  }
-  return chunks;
-}
-
-async function runWithProgress<T>(
-  win: Window,
-  rows: T[],
-  headline: string,
-  work: (group: T[]) => void | Promise<void>,
-): Promise<void> {
-  const total = rows.length;
-  const progress = new ProgressWindowHelper(headline)
-    .createLine({
-      text: getString("progress-items-processed", {
-        args: { current: 0, total },
-      }),
-      progress: 0,
-    })
-    .show(-1);
-  try {
-    let processed = 0;
-    for (const group of chunk(rows, CHUNK_SIZE)) {
-      await work(group);
-      processed += group.length;
-      progress.changeLine({
-        text: getString("progress-items-processed", {
-          args: { current: processed, total },
-        }),
-        progress: Math.round((processed / total) * 100),
-      });
-      await new Promise((r) => win.setTimeout(r, 0));
-    }
-  } finally {
-    progress.startCloseTimer(2000);
   }
 }
 

@@ -24,8 +24,10 @@ async function onStartup() {
         menuType: "menuitem",
         l10nID: "zotero-lang-cat-menu-classify",
         onCommand: () => {
-          const items = getScopedEligibleItems();
-          openClassifyDialog(items);
+          void (async () => {
+            const items = await getScopedEligibleItems(Zotero.getMainWindow());
+            openClassifyDialog(items);
+          })();
         },
       },
     ],
