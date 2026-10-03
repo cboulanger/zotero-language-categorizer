@@ -113,6 +113,7 @@ export class DialogController {
   private cancelButton?: HTMLButtonElement;
   private emptyState?: HTMLElement;
   private tableContainer?: HTMLElement;
+  private activeEditor?: HTMLInputElement;
 
   constructor(
     private win: Window,
@@ -132,6 +133,9 @@ export class DialogController {
     ) as HTMLElement;
     const skipHint = doc.getElementById(
       "zotero-lang-cat-skip-hint",
+    ) as HTMLElement;
+    const editHint = doc.getElementById(
+      "zotero-lang-cat-edit-hint",
     ) as HTMLElement;
     const emptyState = doc.getElementById(
       "zotero-lang-cat-empty-state",
@@ -156,6 +160,7 @@ export class DialogController {
     heading.textContent = getString("dialog-heading");
     explanation.textContent = getString("dialog-explanation");
     skipHint.textContent = getString("dialog-skip-hint");
+    editHint.textContent = getString("dialog-edit-hint");
     cancelButton.textContent = getString("dialog-cancel");
     actionButton.textContent = getString("dialog-apply");
 
@@ -243,24 +248,90 @@ export class DialogController {
         },
         { dataKey: "title", label: getString("dialog-column-title"), flex: 3 },
         {
-          dataKey: "change",
-          label: getString("dialog-column-change"),
+          dataKey: "current",
+          label: getString("dialog-column-current"),
           fixedWidth: true,
-          width: 140,
+          width: 60,
+        },
+        {
+          dataKey: "predicted",
+          label: getString("dialog-column-predicted"),
+          fixedWidth: true,
+          width: 110,
         },
         { dataKey: "status", label: "", fixedWidth: true, width: 32 },
       ])
       .setProp("multiSelect", false)
       .setProp("onSelectionChange", () => {})
-      .setProp("onActivate", (_e: Event, indices: number[]) => {
+      .setProp("onActivate", (e: Event, indices: number[]) => {
+        const index = indices[0];
+        const row = index !== undefined ? this.rows[index] : undefined;
+        const target = (e as MouseEvent).target as Element | null;
+        const isPredictedCell = !!target?.closest(".cell.predicted");
+
+        if (row && isPredictedCell && !this.busy && !this.applied) {
+          this.startCodeEdit(index, row);
+          return;
+        }
         for (const i of indices) {
-          const row = this.rows[i];
-          if (row) row.excluded = !row.excluded;
+          const r = this.rows[i];
+          if (r) r.excluded = !r.excluded;
         }
         this.table?.treeInstance.invalidate();
       })
       .setContainerId("zotero-lang-cat-table-container");
     return this.table;
+  }
+
+  // Opens a floating text input over the Predicted cell for row `index`,
+  // positioned via getBoundingClientRect() since the table's cells are
+  // plain rendered spans, not individually-embeddable DOM nodes.
+  private startCodeEdit(index: number, row: RowState): void {
+    this.closeCodeEdit(); // commit/cancel any editor already open
+
+    const cellEl = this.win.document.querySelector(
+      `#zotero-lang-cat-table-row-${index} .cell.predicted`,
+    );
+    if (!cellEl || !(cellEl instanceof this.win.HTMLElement)) return;
+
+    const rect = cellEl.getBoundingClientRect();
+    const input = this.win.document.createElement("input");
+    input.className = "zotero-lang-cat-code-editor";
+    input.value = row.code ?? "";
+    Object.assign(input.style, {
+      position: "fixed",
+      left: `${rect.left}px`,
+      top: `${rect.top}px`,
+      width: `${rect.width}px`,
+      height: `${rect.height}px`,
+    });
+
+    const commit = () => {
+      if (commitCodeEdit(row, input.value)) {
+        this.closeCodeEdit();
+        this.table?.treeInstance.invalidate();
+      } else {
+        input.classList.add("invalid");
+      }
+    };
+    input.addEventListener("blur", commit);
+    input.addEventListener("keydown", (ev) => {
+      // This Gecko-flavored dom lib types "keydown" as the base Event, not
+      // KeyboardEvent, so `.key` needs a cast.
+      const key = (ev as KeyboardEvent).key;
+      if (key === "Enter") commit();
+      if (key === "Escape") this.closeCodeEdit();
+    });
+
+    this.win.document.body!.appendChild(input);
+    input.focus();
+    input.select();
+    this.activeEditor = input;
+  }
+
+  private closeCodeEdit(): void {
+    this.activeEditor?.remove();
+    this.activeEditor = undefined;
   }
 
   rowData(i: number): Record<string, string> {
