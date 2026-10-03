@@ -1,6 +1,7 @@
 import { VirtualizedTableHelper } from "zotero-plugin-toolkit";
 import { getClassifier } from "../classifiers";
 import { getString } from "../../utils/locale";
+import { isIso6391Code } from "../iso639-1";
 import { runWithProgress } from "../progress";
 import { filterEligibleItems } from "../scan";
 import type { LanguageClassifier } from "../classifiers/types";
@@ -52,11 +53,23 @@ export function previewRows(
       const result = classifier.classify(text);
       row.code = result?.code ?? null;
       row.reliable = result?.reliable ?? null;
+      if (row.reliable === false) row.excluded = true;
     } catch (e) {
       row.code = null;
       row.reliable = null;
     }
   }
+}
+
+// Commits a manually-typed predicted code. Editing counts as confirming the
+// row (same as the double-click toggle), since a user-supplied value is no
+// longer a low-confidence guess.
+export function commitCodeEdit(row: RowState, rawValue: string): boolean {
+  const value = rawValue.trim().toLowerCase();
+  if (!isIso6391Code(value)) return false;
+  row.code = value;
+  row.excluded = false;
+  return true;
 }
 
 type ApplyableItem = ScannableItem & {
@@ -251,17 +264,17 @@ export class DialogController {
 
   rowData(i: number): Record<string, string> {
     const row = this.rows[i];
-    const oldValue = row.currentLanguage || "—";
-    const newValue = row.code
-      ? row.reliable === false
+    const current = row.currentLanguage || "—";
+    const predicted = row.code
+      ? row.excluded && row.reliable === false
         ? `${row.code} (?)`
         : row.code
       : "…";
-    const change = `${oldValue} → ${newValue}`;
     return {
       title: row.title,
       creators: row.creators,
-      change: row.excluded ? `🚫 ${change}` : change,
+      current,
+      predicted: row.excluded ? `🚫 ${predicted}` : predicted,
       status:
         row.status === "success" ? "✓" : row.status === "error" ? "✗" : "",
       highlighted: row.excluded ? "1" : "",

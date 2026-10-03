@@ -3,6 +3,7 @@ import {
   buildRows,
   previewRows,
   formatCreators,
+  commitCodeEdit,
   DialogController,
 } from "../../src/modules/dialog/classify-dialog";
 import type { LanguageClassifier } from "../../src/modules/classifiers/types";
@@ -107,6 +108,78 @@ describe("classify-dialog", function () {
     });
   });
 
+  describe("previewRows — low-confidence default exclusion", function () {
+    it("excludes a row by default when the classifier reports it unreliable", function () {
+      const rows = buildRows([makeItem("Short")]);
+      previewRows(rows, fakeClassifier);
+      expect(rows[0].reliable).to.be.false;
+      expect(rows[0].excluded).to.be.true;
+    });
+
+    it("leaves a reliably-classified row included by default", function () {
+      const rows = buildRows([makeItem("Hello World, a long enough title")]);
+      previewRows(rows, fakeClassifier);
+      expect(rows[0].reliable).to.be.true;
+      expect(rows[0].excluded).to.be.false;
+    });
+  });
+
+  describe("rowData — current/predicted columns", function () {
+    it("shows the (?) marker and 🚫 for an unconfirmed low-confidence row", function () {
+      const rows = buildRows([makeItem("Short")]);
+      previewRows(rows, fakeClassifier);
+      const controller = new DialogController(fakeWin, rows);
+      const data = controller.rowData(0);
+      expect(data.current).to.equal("—");
+      expect(data.predicted).to.equal("🚫 en (?)");
+    });
+
+    it("hides the (?) marker and 🚫 once the row is confirmed", function () {
+      const rows = buildRows([makeItem("Short")]);
+      previewRows(rows, fakeClassifier);
+      rows[0].excluded = false; // simulates the existing double-click toggle
+      const controller = new DialogController(fakeWin, rows);
+      const data = controller.rowData(0);
+      expect(data.predicted).to.equal("en");
+    });
+
+    it("shows the item's existing language in the current column when set", function () {
+      const rows = buildRows([makeItem("Title", "", "German")]);
+      const controller = new DialogController(fakeWin, rows);
+      expect(controller.rowData(0).current).to.equal("German");
+    });
+  });
+
+  describe("commitCodeEdit", function () {
+    it("accepts a valid ISO 639-1 code, updates the row, and confirms it", function () {
+      const rows = buildRows([makeItem("Title")]);
+      rows[0].code = "en";
+      rows[0].excluded = true;
+      const ok = commitCodeEdit(rows[0], " FR ");
+      expect(ok).to.be.true;
+      expect(rows[0].code).to.equal("fr");
+      expect(rows[0].excluded).to.be.false;
+    });
+
+    it("accepts a valid code for a row the classifier never produced a code for", function () {
+      const rows = buildRows([makeItem("Title")]);
+      const ok = commitCodeEdit(rows[0], "de");
+      expect(ok).to.be.true;
+      expect(rows[0].code).to.equal("de");
+      expect(rows[0].excluded).to.be.false;
+    });
+
+    it("rejects an invalid code and leaves the row unchanged", function () {
+      const rows = buildRows([makeItem("Title")]);
+      rows[0].code = "en";
+      rows[0].excluded = true;
+      const ok = commitCodeEdit(rows[0], "xx-not-a-code");
+      expect(ok).to.be.false;
+      expect(rows[0].code).to.equal("en");
+      expect(rows[0].excluded).to.be.true;
+    });
+  });
+
   describe("DialogController row exclusion", function () {
     it("rowData() marks a fresh row as not highlighted", function () {
       const rows = buildRows([makeItem("Title")]);
@@ -114,14 +187,14 @@ describe("classify-dialog", function () {
       expect(controller.rowData(0).highlighted).to.equal("");
     });
 
-    it("rowData() highlights an excluded row and prefixes change with 🚫", function () {
+    it("rowData() highlights an excluded row and prefixes predicted with 🚫", function () {
       const rows = buildRows([makeItem("Title")]);
       rows[0].code = "en";
       rows[0].excluded = true;
       const controller = new DialogController(fakeWin, rows);
       const data = controller.rowData(0);
       expect(data.highlighted).to.equal("1");
-      expect(data.change.startsWith("🚫 ")).to.be.true;
+      expect(data.predicted.startsWith("🚫 ")).to.be.true;
     });
 
     it("runApply() skips excluded rows even when they have a code", async function () {
