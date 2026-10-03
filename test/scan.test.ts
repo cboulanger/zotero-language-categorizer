@@ -79,7 +79,7 @@ describe("scan", function () {
         makeItem({ language: "en" }),
         makeItem({ isRegular: false }),
       ];
-      expect(getEligibleItems(items)).to.deep.equal([items[0]]);
+      expect(getEligibleItems(items)).to.deep.equal([items[0], items[1]]);
     });
   });
 });
