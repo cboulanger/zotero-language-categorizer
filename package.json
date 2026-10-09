@@ -34,7 +34,7 @@
   "dependencies": {
     "eld": "^2.1.0",
     "iso-639-3": "^3.0.1",
-    "zotero-plugin-toolkit": "^5.2.0"
+    "zotero-plugin-toolkit": "^6.0.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.3",
